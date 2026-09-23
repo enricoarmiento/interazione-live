@@ -219,37 +219,39 @@ export const ProjectorView: React.FC<ProjectorViewProps> = ({ initialPollId }) =
             <span>Esci</span>
           </Link>
 
-          {/* Previous / Next Poll Buttons */}
-          <div className="flex items-center gap-1.5 bg-slate-800/90 p-1 rounded-xl border border-slate-700">
+          {/* Direct Poll Switcher: choose any poll at any time */}
+          <div className="flex items-center gap-1.5">
+            <select
+              value={currentPollId}
+              onChange={(e) => {
+                const targetId = e.target.value;
+                setCurrentPollId(targetId);
+                router.push(`/projector/${targetId}`);
+              }}
+              className="bg-slate-800 text-white font-bold text-xs px-3 py-2 rounded-xl border border-slate-700 outline-none cursor-pointer hover:border-slate-500 transition-colors max-w-[260px] sm:max-w-[340px] truncate"
+              title="Seleziona quale sondaggio proiettare adesso"
+            >
+              {allPolls.map((p, idx) => (
+                <option key={p.id} value={p.id} className="bg-slate-900 text-white">
+                  {idx + 1}. {p.title}
+                </option>
+              ))}
+            </select>
+
             <button
               onClick={goToPrevPoll}
               disabled={currentIndex <= 0}
-              className={`px-2.5 py-1 rounded-lg text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer ${
-                currentIndex <= 0
-                  ? 'text-slate-600 cursor-not-allowed'
-                  : 'text-slate-200 hover:bg-slate-700 hover:text-white'
-              }`}
-              title="Precedente (Freccia Sinistra)"
+              className="p-2 rounded-xl bg-slate-800 text-slate-300 hover:text-white border border-slate-700 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+              title="Precedente"
             >
               <ChevronLeft className="w-4 h-4" />
-              <span className="hidden sm:inline">Precedente</span>
             </button>
-
-            <span className="text-xs font-black text-white px-2">
-              {currentIndex >= 0 ? `${currentIndex + 1} / ${allPolls.length}` : '—'}
-            </span>
-
             <button
               onClick={goToNextPoll}
               disabled={currentIndex >= allPolls.length - 1}
-              className={`px-2.5 py-1 rounded-lg text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer ${
-                currentIndex >= allPolls.length - 1
-                  ? 'text-slate-600 cursor-not-allowed'
-                  : 'text-slate-200 hover:bg-slate-700 hover:text-white'
-              }`}
-              title="Successivo (Freccia Destra)"
+              className="p-2 rounded-xl bg-slate-800 text-slate-300 hover:text-white border border-slate-700 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+              title="Successivo"
             >
-              <span className="hidden sm:inline">Successivo</span>
               <ChevronRight className="w-4 h-4" />
             </button>
           </div>

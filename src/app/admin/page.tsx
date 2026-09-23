@@ -22,16 +22,13 @@ import {
   Trash2,
   Download,
   Upload,
-  ArrowUp,
-  ArrowDown,
   RotateCcw,
   Sparkles,
-  Layers,
   X,
   PlusCircle,
-  HelpCircle,
   Radio,
   ExternalLink,
+  Check,
 } from 'lucide-react';
 
 export default function AdminPage() {
@@ -43,17 +40,27 @@ export default function AdminPage() {
   const [origin, setOrigin] = useState('');
 
   // New poll form state
-  const [newType, setNewType] = useState<PollType>('rating');
+  const [newType, setNewType] = useState<PollType>('choice');
   const [newTitle, setNewTitle] = useState('');
   const [newDescription, setNewDescription] = useState('');
   const [newOptions, setNewOptions] = useState<string[]>(['Opzione 1', 'Opzione 2', 'Opzione 3']);
-  const [newCorrectOption, setNewCorrectOption] = useState<number | null>(null);
   const [newMinLabel, setNewMinLabel] = useState('Per nulla d\'accordo');
   const [newMaxLabel, setNewMaxLabel] = useState('Totalmente d\'accordo');
   const [newEmojis, setNewEmojis] = useState<string[]>(['🚀', '💡', '🔥', '🤔', '☕', '👏']);
   const [newYesLabel, setNewYesLabel] = useState('Sì');
   const [newNoLabel, setNewNoLabel] = useState('No');
   const [newMaybeLabel, setNewMaybeLabel] = useState('Forse');
+
+  // Edit form state
+  const [editTitle, setEditTitle] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+  const [editOptions, setEditOptions] = useState<string[]>([]);
+  const [editMinLabel, setEditMinLabel] = useState('');
+  const [editMaxLabel, setEditMaxLabel] = useState('');
+  const [editEmojis, setEditEmojis] = useState<string[]>([]);
+  const [editYesLabel, setEditYesLabel] = useState('');
+  const [editNoLabel, setEditNoLabel] = useState('');
+  const [editMaybeLabel, setEditMaybeLabel] = useState('');
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -78,18 +85,6 @@ export default function AdminPage() {
     setSessionTitle(val);
   };
 
-  const handleMove = (index: number, direction: 'up' | 'down') => {
-    const targetIndex = direction === 'up' ? index - 1 : index + 1;
-    if (targetIndex < 0 || targetIndex >= polls.length) return;
-
-    const newPolls = [...polls];
-    const [moved] = newPolls.splice(index, 1);
-    newPolls.splice(targetIndex, 0, moved);
-
-    setPolls(newPolls);
-    saveStoredPolls(newPolls);
-  };
-
   const handleDelete = (id: string) => {
     if (confirm('Vuoi davvero eliminare questo sondaggio?')) {
       const filtered = polls.filter((p) => p.id !== id);
@@ -99,7 +94,7 @@ export default function AdminPage() {
   };
 
   const handleResetDefaults = () => {
-    if (confirm('Vuoi ripristinare i 6 sondaggi di esempio iniziali?')) {
+    if (confirm('Vuoi ripristinare i sondaggi di esempio iniziali?')) {
       setPolls(DEFAULT_POLLS);
       saveStoredPolls(DEFAULT_POLLS);
       DEFAULT_POLLS.forEach((p) => {
@@ -118,7 +113,7 @@ export default function AdminPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `slidepulse-${new Date().toISOString().slice(0, 10)}.json`;
+    a.download = `sondaggi-${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -141,6 +136,92 @@ export default function AdminPage() {
     reader.readAsText(file);
   };
 
+  // Open Edit Modal
+  const openEditModal = (poll: Poll) => {
+    setEditingPoll(poll);
+    setEditTitle(poll.title);
+    setEditDescription(poll.description || '');
+
+    if (poll.type === 'choice') {
+      setEditOptions([...(poll.options || [])]);
+    } else if (poll.type === 'rating') {
+      setEditMinLabel(poll.minLabel || 'Per nulla d\'accordo');
+      setEditMaxLabel(poll.maxLabel || 'Totalmente d\'accordo');
+    } else if (poll.type === 'emoji') {
+      setEditEmojis([...(poll.emojis || [])]);
+    } else if (poll.type === 'yesno') {
+      setEditYesLabel(poll.yesLabel || 'Sì');
+      setEditNoLabel(poll.noLabel || 'No');
+      setEditMaybeLabel(poll.maybeLabel || 'Forse');
+    }
+  };
+
+  // Save Edited Poll
+  const handleSaveEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingPoll || !editTitle.trim()) return;
+
+    let updatedPoll: Poll;
+
+    if (editingPoll.type === 'rating') {
+      updatedPoll = {
+        ...editingPoll,
+        title: editTitle.trim(),
+        description: editDescription.trim() || undefined,
+        minLabel: editMinLabel.trim() || 'Per nulla d\'accordo',
+        maxLabel: editMaxLabel.trim() || 'Totalmente d\'accordo',
+      };
+    } else if (editingPoll.type === 'choice') {
+      const cleanOpts = editOptions.map((o) => o.trim()).filter(Boolean);
+      if (cleanOpts.length < 2) {
+        alert('Inserisci almeno 2 opzioni di risposta');
+        return;
+      }
+      updatedPoll = {
+        ...editingPoll,
+        title: editTitle.trim(),
+        description: editDescription.trim() || undefined,
+        options: cleanOpts,
+      };
+    } else if (editingPoll.type === 'emoji') {
+      updatedPoll = {
+        ...editingPoll,
+        title: editTitle.trim(),
+        description: editDescription.trim() || undefined,
+        emojis: editEmojis,
+      };
+    } else if (editingPoll.type === 'yesno') {
+      updatedPoll = {
+        ...editingPoll,
+        title: editTitle.trim(),
+        description: editDescription.trim() || undefined,
+        yesLabel: editYesLabel.trim() || 'Sì',
+        noLabel: editNoLabel.trim() || 'No',
+        maybeLabel: editMaybeLabel.trim() || 'Forse',
+      };
+    } else {
+      updatedPoll = {
+        ...editingPoll,
+        title: editTitle.trim(),
+        description: editDescription.trim() || undefined,
+      };
+    }
+
+    const updatedList = polls.map((p) => (p.id === updatedPoll.id ? updatedPoll : p));
+    setPolls(updatedList);
+    saveStoredPolls(updatedList);
+
+    // Sync to server
+    await fetch(`/api/poll/${updatedPoll.id}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updatedPoll),
+    });
+
+    setEditingPoll(null);
+  };
+
+  // Create New Poll
   const handleCreatePoll = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTitle.trim()) {
@@ -154,7 +235,7 @@ export default function AdminPage() {
     let created: Poll;
 
     if (newType === 'rating') {
-      const p: RatingPoll = {
+      created = {
         id: newId,
         code: randomPin,
         title: newTitle.trim(),
@@ -166,9 +247,8 @@ export default function AdminPage() {
         maxLabel: newMaxLabel.trim() || 'Totalmente d\'accordo',
         createdAt: Date.now(),
       };
-      created = p;
     } else if (newType === 'text') {
-      const p: TextPoll = {
+      created = {
         id: newId,
         code: randomPin,
         title: newTitle.trim(),
@@ -178,26 +258,23 @@ export default function AdminPage() {
         allowMultipleSubmissions: true,
         createdAt: Date.now(),
       };
-      created = p;
     } else if (newType === 'choice') {
       const cleanOpts = newOptions.map((o) => o.trim()).filter(Boolean);
       if (cleanOpts.length < 2) {
         alert('Inserisci almeno 2 opzioni di risposta');
         return;
       }
-      const p: ChoicePoll = {
+      created = {
         id: newId,
         code: randomPin,
         title: newTitle.trim(),
         description: newDescription.trim() || undefined,
         type: 'choice',
         options: cleanOpts,
-        correctOptionIndex: newCorrectOption,
         createdAt: Date.now(),
       };
-      created = p;
     } else if (newType === 'qna') {
-      const p: QnAPoll = {
+      created = {
         id: newId,
         code: randomPin,
         title: newTitle.trim(),
@@ -206,9 +283,8 @@ export default function AdminPage() {
         allowUpvotes: true,
         createdAt: Date.now(),
       };
-      created = p;
     } else if (newType === 'emoji') {
-      const p: EmojiPoll = {
+      created = {
         id: newId,
         code: randomPin,
         title: newTitle.trim(),
@@ -217,9 +293,8 @@ export default function AdminPage() {
         emojis: newEmojis,
         createdAt: Date.now(),
       };
-      created = p;
     } else {
-      const p: YesNoPoll = {
+      created = {
         id: newId,
         code: randomPin,
         title: newTitle.trim(),
@@ -230,7 +305,6 @@ export default function AdminPage() {
         maybeLabel: newMaybeLabel.trim() || 'Forse',
         createdAt: Date.now(),
       };
-      created = p;
     }
 
     const updated = [...polls, created];
@@ -244,19 +318,18 @@ export default function AdminPage() {
       body: JSON.stringify(created),
     });
 
-    // Reset form
     setNewTitle('');
     setNewDescription('');
     setIsCreateModalOpen(false);
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-between">
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-between selection:bg-blue-600 selection:text-white">
       {/* Top Header */}
-      <header className="border-b border-slate-800/80 bg-slate-900/60 backdrop-blur-md sticky top-0 z-30 px-6 py-4">
+      <header className="border-b border-slate-800 bg-slate-900/90 backdrop-blur-md sticky top-0 z-30 px-6 py-4">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center font-black text-white text-lg shadow-lg shadow-blue-500/20">
+            <div className="w-10 h-10 rounded-2xl bg-blue-600 flex items-center justify-center font-black text-white text-lg shadow-md shadow-blue-600/30">
               SP
             </div>
             <div>
@@ -265,47 +338,38 @@ export default function AdminPage() {
                   type="text"
                   value={sessionTitle}
                   onChange={(e) => handleUpdateTitle(e.target.value)}
-                  className="text-lg font-black bg-transparent hover:bg-slate-800/60 focus:bg-slate-800 px-2 py-0.5 rounded-lg border border-transparent focus:border-slate-700 text-white transition-all outline-none"
-                  placeholder="Nome Presentazione PowerPoint..."
+                  className="text-lg font-black bg-transparent hover:bg-slate-800 focus:bg-slate-800 px-2 py-0.5 rounded-lg border border-transparent focus:border-slate-700 text-white outline-none transition-all"
+                  placeholder="Nome Presentazione..."
                 />
               </div>
               <span className="text-xs text-slate-400 px-2 block">
-                Pannello di Controllo Relatore • Zero Database
+                Pannello Relatore • Zero Database
               </span>
             </div>
           </div>
 
           <div className="flex items-center gap-2.5 flex-wrap">
-            {/* Launch Projector Presentation View */}
-            <Link
-              href={polls.length > 0 ? `/projector/${polls[0].id}` : '/projector'}
-              className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-sm shadow-lg shadow-blue-600/30 flex items-center gap-2 transition-all active:scale-95"
-            >
-              <Play className="w-4 h-4 fill-white" />
-              <span>Avvia Vista Proiettore</span>
-            </Link>
-
             {/* New Poll Button */}
             <button
               onClick={() => setIsCreateModalOpen(true)}
-              className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-sm border border-slate-700 flex items-center gap-2 transition-colors cursor-pointer"
+              className="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm shadow-md shadow-blue-600/30 flex items-center gap-2 transition-all active:scale-95 cursor-pointer"
             >
-              <Plus className="w-4 h-4 text-blue-400" />
+              <Plus className="w-4 h-4" />
               <span>Nuovo Sondaggio</span>
             </button>
 
             {/* JSON Export / Import */}
             <button
               onClick={handleExport}
-              className="p-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700 transition-colors cursor-pointer"
-              title="Esporta sessione in JSON"
+              className="p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition-colors cursor-pointer"
+              title="Salva backup sondaggi (JSON)"
             >
               <Download className="w-4 h-4" />
             </button>
 
             <label
-              className="p-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700 transition-colors cursor-pointer"
-              title="Importa sessione da JSON"
+              className="p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition-colors cursor-pointer"
+              title="Carica sondaggi da file JSON"
             >
               <Upload className="w-4 h-4" />
               <input type="file" accept=".json" onChange={handleImport} className="hidden" />
@@ -316,21 +380,22 @@ export default function AdminPage() {
 
       {/* Main Content Area */}
       <main className="max-w-7xl mx-auto w-full p-6 sm:p-8 flex-1">
-        {/* Info banner with Master live URL */}
-        <div className="p-5 rounded-3xl bg-gradient-to-r from-blue-900/30 via-indigo-900/20 to-purple-900/30 border border-blue-500/30 mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        {/* Info Banner */}
+        <div className="p-5 rounded-3xl bg-slate-900 border border-slate-800 mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-3.5">
-            <div className="w-10 h-10 rounded-xl bg-blue-500/20 text-blue-400 flex items-center justify-center shrink-0">
+            <div className="w-10 h-10 rounded-2xl bg-blue-600/20 text-blue-400 flex items-center justify-center shrink-0">
               <Radio className="w-5 h-5 animate-pulse" />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-white">Link Generale per l&apos;intera presentazione</h3>
+              <h3 className="text-sm font-bold text-white">Come funziona durante la presentazione</h3>
               <p className="text-xs text-slate-400 mt-0.5">
-                Gli studenti possono aprire questo link o scansionare il QR: quando cambi slide, la domanda si aggiorna in automatico sul loro telefono!
+                I sondaggi sono indipendenti: puoi scaricare il QR Code di ciascuno da incollare nelle tue slide PowerPoint, oppure proiettare direttamente quello che desideri al momento giusto.
               </p>
             </div>
           </div>
+
           <div className="flex items-center gap-2">
-            <code className="text-xs font-mono font-bold bg-slate-900/80 text-blue-300 px-3 py-1.5 rounded-xl border border-slate-800">
+            <code className="text-xs font-mono font-bold bg-slate-950 text-blue-300 px-3 py-1.5 rounded-xl border border-slate-800">
               {origin ? `${origin}/live` : '/live'}
             </code>
             <Link
@@ -347,12 +412,11 @@ export default function AdminPage() {
         {/* Section Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h2 className="text-xl font-black text-white flex items-center gap-2">
-              <Layers className="w-5 h-5 text-blue-400" />
-              <span>Scaletta Sondaggi ({polls.length})</span>
+            <h2 className="text-2xl font-black text-white flex items-center gap-2">
+              <span>I Tuoi Sondaggi ({polls.length})</span>
             </h2>
-            <p className="text-xs text-slate-400 mt-0.5">
-              Organizza l&apos;ordine dei sondaggi da mostrare durante le slide PowerPoint
+            <p className="text-xs text-slate-400 mt-1">
+              Modifica i testi, scarica il QR code per le tue slide o proietta live quando vuoi
             </p>
           </div>
 
@@ -361,105 +425,99 @@ export default function AdminPage() {
             className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
           >
             <RotateCcw className="w-3.5 h-3.5" />
-            Ripristina sondaggi di esempio
+            Ripristina esempi
           </button>
         </div>
 
         {/* Polls Cards Grid */}
-        <div className="space-y-3.5">
-          {polls.map((poll, index) => {
-            const studentUrl = origin ? `${origin}/p/${poll.id}` : `/p/${poll.id}`;
-
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {polls.map((poll) => {
             return (
               <div
                 key={poll.id}
-                className="p-5 rounded-3xl bg-slate-900/70 border border-slate-800/90 shadow-md hover:border-slate-700 transition-all flex flex-col md:flex-row md:items-center justify-between gap-5 group"
+                className="p-5 rounded-3xl bg-slate-900 border border-slate-800 hover:border-slate-700 transition-all flex flex-col justify-between gap-5 group"
               >
-                {/* Left info */}
-                <div className="flex items-start gap-4 flex-1">
-                  <div className="w-9 h-9 rounded-xl bg-slate-800 border border-slate-700 text-slate-300 font-bold text-sm flex items-center justify-center shrink-0">
-                    {index + 1}
+                {/* Header Info */}
+                <div>
+                  <div className="flex items-center justify-between gap-2 mb-3">
+                    <span className="text-[11px] font-black uppercase tracking-wider text-blue-400 bg-blue-500/10 px-2.5 py-1 rounded-full border border-blue-500/20">
+                      {poll.type === 'rating' && '⭐ Voto da 1 a 10'}
+                      {poll.type === 'text' && '💬 Testo Libero'}
+                      {poll.type === 'choice' && `📊 Scelta Multipla (${poll.options?.length} opzioni)`}
+                      {poll.type === 'qna' && '❓ Domande & Risposte'}
+                      {poll.type === 'emoji' && '🔥 Reazioni Live'}
+                      {poll.type === 'yesno' && '👍 Sì / No'}
+                    </span>
+
+                    <span className="text-xs font-mono font-bold text-slate-400 bg-slate-950 px-2.5 py-1 rounded-lg border border-slate-800">
+                      PIN: {poll.code}
+                    </span>
                   </div>
 
-                  <div className="space-y-1.5">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-[11px] font-extrabold uppercase tracking-wider text-blue-400 bg-blue-500/10 px-2.5 py-0.5 rounded-full border border-blue-500/20">
-                        {poll.type === 'rating' && '1-10 Accordo'}
-                        {poll.type === 'text' && 'Testo Libero'}
-                        {poll.type === 'choice' && `Scelta Multipla (${poll.options?.length} opz.)`}
-                        {poll.type === 'qna' && 'Q&A Platea'}
-                        {poll.type === 'emoji' && 'Emoji Pulse'}
-                        {poll.type === 'yesno' && 'Sì / No'}
-                      </span>
-                      <span className="text-[11px] font-mono text-slate-400 bg-slate-800/80 px-2 py-0.5 rounded-md border border-slate-700/60 font-bold">
-                        PIN: {poll.code}
-                      </span>
+                  <h3 className="text-lg font-bold text-white group-hover:text-blue-300 transition-colors leading-snug">
+                    {poll.title}
+                  </h3>
+
+                  {poll.description && (
+                    <p className="text-xs text-slate-400 mt-1.5 line-clamp-2 leading-relaxed">
+                      {poll.description}
+                    </p>
+                  )}
+
+                  {poll.type === 'choice' && poll.options && (
+                    <div className="mt-3 flex flex-wrap gap-1.5">
+                      {poll.options.map((opt, i) => (
+                        <span key={i} className="text-[11px] bg-slate-800/80 text-slate-300 px-2 py-0.5 rounded-md border border-slate-700/60 truncate max-w-[200px]">
+                          {String.fromCharCode(65 + i)}. {opt}
+                        </span>
+                      ))}
                     </div>
-
-                    <h3 className="text-base sm:text-lg font-bold text-white group-hover:text-blue-300 transition-colors">
-                      {poll.title}
-                    </h3>
-
-                    {poll.description && (
-                      <p className="text-xs text-slate-400 line-clamp-1">{poll.description}</p>
-                    )}
-                  </div>
+                  )}
                 </div>
 
-                {/* Right controls */}
-                <div className="flex items-center gap-2 flex-wrap shrink-0">
-                  {/* Reorder Buttons */}
-                  <div className="flex items-center bg-slate-800/80 p-1 rounded-xl border border-slate-700">
-                    <button
-                      onClick={() => handleMove(index, 'up')}
-                      disabled={index === 0}
-                      className={`p-1 rounded-lg ${
-                        index === 0 ? 'text-slate-600' : 'text-slate-300 hover:text-white hover:bg-slate-700'
-                      }`}
-                      title="Sposta su"
+                {/* Actions Bar */}
+                <div className="pt-4 border-t border-slate-800/80 flex items-center justify-between gap-2 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    {/* Project Poll Button */}
+                    <Link
+                      href={`/projector/${poll.id}`}
+                      onClick={() => setActivePollId(poll.id)}
+                      className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold shadow-md shadow-blue-600/30 flex items-center gap-1.5 transition-all active:scale-95"
                     >
-                      <ArrowUp className="w-4 h-4" />
-                    </button>
+                      <Play className="w-3.5 h-3.5 fill-white" />
+                      <span>Proietta Ora</span>
+                    </Link>
+
+                    {/* Edit Text Button */}
                     <button
-                      onClick={() => handleMove(index, 'down')}
-                      disabled={index === polls.length - 1}
-                      className={`p-1 rounded-lg ${
-                        index === polls.length - 1 ? 'text-slate-600' : 'text-slate-300 hover:text-white hover:bg-slate-700'
-                      }`}
-                      title="Sposta giù"
+                      onClick={() => openEditModal(poll)}
+                      className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold border border-slate-700 flex items-center gap-1.5 transition-colors cursor-pointer"
                     >
-                      <ArrowDown className="w-4 h-4" />
+                      <Edit2 className="w-3.5 h-3.5 text-amber-400" />
+                      <span>Modifica Testo</span>
                     </button>
                   </div>
 
-                  {/* QR Code Modal preview */}
-                  <button
-                    onClick={() => setSelectedQrPoll(poll)}
-                    className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 flex items-center gap-1.5 transition-colors cursor-pointer"
-                    title="Mostra e scarica QR code per PowerPoint"
-                  >
-                    <QrCode className="w-4 h-4 text-blue-400" />
-                    <span>QR Code</span>
-                  </button>
+                  <div className="flex items-center gap-2">
+                    {/* QR Code Modal preview */}
+                    <button
+                      onClick={() => setSelectedQrPoll(poll)}
+                      className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold border border-slate-700 flex items-center gap-1.5 transition-colors cursor-pointer"
+                      title="Scarica QR code PNG per PowerPoint"
+                    >
+                      <QrCode className="w-3.5 h-3.5 text-blue-400" />
+                      <span>Scarica QR</span>
+                    </button>
 
-                  {/* Project specific poll */}
-                  <Link
-                    href={`/projector/${poll.id}`}
-                    onClick={() => setActivePollId(poll.id)}
-                    className="px-3.5 py-2 rounded-xl bg-blue-600/20 hover:bg-blue-600 text-blue-300 hover:text-white text-xs font-bold border border-blue-500/40 flex items-center gap-1.5 transition-all shadow-sm"
-                  >
-                    <Play className="w-3.5 h-3.5" />
-                    <span>Proietta</span>
-                  </Link>
-
-                  {/* Delete Button */}
-                  <button
-                    onClick={() => handleDelete(poll.id)}
-                    className="p-2 rounded-xl bg-slate-800 hover:bg-rose-950/60 text-slate-400 hover:text-rose-400 border border-slate-700 hover:border-rose-500/40 transition-colors cursor-pointer"
-                    title="Elimina sondaggio"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                    {/* Delete Button */}
+                    <button
+                      onClick={() => handleDelete(poll.id)}
+                      className="p-2 rounded-xl bg-slate-800 hover:bg-rose-900/40 text-slate-400 hover:text-rose-400 border border-slate-700 transition-colors cursor-pointer"
+                      title="Elimina sondaggio"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
               </div>
             );
@@ -468,14 +526,14 @@ export default function AdminPage() {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-slate-900 py-4 px-6 text-center text-xs text-slate-400">
-        SlidePulse • Creato per Enrico Armiento • Pronto al deploy su Vercel e GitHub
+      <footer className="border-t border-slate-900 py-4 px-6 text-center text-xs text-slate-500">
+        SlidePulse Live • Pronto per le tue presentazioni PowerPoint
       </footer>
 
-      {/* QR Code Inspector Modal */}
+      {/* QR Code Modal preview */}
       {selectedQrPoll && (
         <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-md w-full relative shadow-2xl animate-in zoom-in-95 duration-200">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-md w-full relative shadow-2xl animate-in zoom-in-95 duration-150">
             <button
               onClick={() => setSelectedQrPoll(null)}
               className="absolute top-4 right-4 p-2 text-slate-400 hover:text-white rounded-xl bg-slate-800 hover:bg-slate-700 cursor-pointer"
@@ -485,7 +543,7 @@ export default function AdminPage() {
 
             <h3 className="text-lg font-bold text-white mb-1">{selectedQrPoll.title}</h3>
             <p className="text-xs text-slate-400 mb-6">
-              Scarica questo QR code come immagine PNG ad alta risoluzione per incollarlo direttamente nella tua slide PowerPoint!
+              Clicca su &quot;Salva PNG&quot; per scaricare l&apos;immagine da incollare direttamente sulla tua slide PowerPoint!
             </p>
 
             <QRCodeCard
@@ -498,10 +556,176 @@ export default function AdminPage() {
         </div>
       )}
 
+      {/* Edit Poll Modal */}
+      {editingPoll && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 max-w-xl w-full relative shadow-2xl my-8 animate-in zoom-in-95 duration-150">
+            <button
+              onClick={() => setEditingPoll(null)}
+              className="absolute top-5 right-5 p-2 text-slate-400 hover:text-white rounded-xl bg-slate-800 hover:bg-slate-700 cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <h3 className="text-xl font-black text-white mb-1">Modifica Testo del Sondaggio</h3>
+            <p className="text-xs text-slate-400 mb-6">
+              Personalizza la domanda, la descrizione e le risposte
+            </p>
+
+            <form onSubmit={handleSaveEdit} className="space-y-4">
+              {/* Question Title */}
+              <div>
+                <label className="block text-xs font-bold text-slate-300 mb-1.5">
+                  Domanda del Sondaggio *
+                </label>
+                <textarea
+                  required
+                  rows={2}
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                  className="w-full p-3 bg-slate-950 border border-slate-700 rounded-xl text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              {/* Description */}
+              <div>
+                <label className="block text-xs font-bold text-slate-300 mb-1.5">
+                  Istruzioni o Descrizione (opzionale)
+                </label>
+                <input
+                  type="text"
+                  value={editDescription}
+                  onChange={(e) => setEditDescription(e.target.value)}
+                  className="w-full p-3 bg-slate-950 border border-slate-700 rounded-xl text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              {/* Choice options editor */}
+              {editingPoll.type === 'choice' && (
+                <div className="space-y-2 pt-2">
+                  <label className="block text-xs font-bold text-slate-300">Opzioni di Risposta</label>
+                  {editOptions.map((opt, idx) => (
+                    <div key={idx} className="flex items-center gap-2">
+                      <span className="w-7 h-7 rounded-lg bg-slate-800 text-xs font-bold flex items-center justify-center text-slate-300 shrink-0">
+                        {String.fromCharCode(65 + idx)}
+                      </span>
+                      <input
+                        type="text"
+                        value={opt}
+                        onChange={(e) => {
+                          const updated = [...editOptions];
+                          updated[idx] = e.target.value;
+                          setEditOptions(updated);
+                        }}
+                        className="flex-1 p-2.5 bg-slate-950 border border-slate-700 rounded-xl text-sm text-white"
+                      />
+                      {editOptions.length > 2 && (
+                        <button
+                          type="button"
+                          onClick={() => setEditOptions(editOptions.filter((_, i) => i !== idx))}
+                          className="p-2 text-rose-400 hover:bg-slate-800 rounded-lg cursor-pointer"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                  {editOptions.length < 8 && (
+                    <button
+                      type="button"
+                      onClick={() => setEditOptions([...editOptions, `Nuova Opzione ${editOptions.length + 1}`])}
+                      className="inline-flex items-center gap-1.5 text-xs text-blue-400 hover:text-blue-300 font-bold mt-1 cursor-pointer"
+                    >
+                      <PlusCircle className="w-4 h-4" />
+                      Aggiungi un&apos;altra opzione
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {/* Rating scale labels editor */}
+              {editingPoll.type === 'rating' && (
+                <div className="grid grid-cols-2 gap-3 pt-2">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-400 mb-1">Testo per Voto 1</label>
+                    <input
+                      type="text"
+                      value={editMinLabel}
+                      onChange={(e) => setEditMinLabel(e.target.value)}
+                      className="w-full p-2.5 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-400 mb-1">Testo per Voto 10</label>
+                    <input
+                      type="text"
+                      value={editMaxLabel}
+                      onChange={(e) => setEditMaxLabel(e.target.value)}
+                      className="w-full p-2.5 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Yes/No labels editor */}
+              {editingPoll.type === 'yesno' && (
+                <div className="grid grid-cols-3 gap-2 pt-2">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-400 mb-1">Pulsante 1</label>
+                    <input
+                      type="text"
+                      value={editYesLabel}
+                      onChange={(e) => setEditYesLabel(e.target.value)}
+                      className="w-full p-2 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-400 mb-1">Pulsante 2</label>
+                    <input
+                      type="text"
+                      value={editNoLabel}
+                      onChange={(e) => setEditNoLabel(e.target.value)}
+                      className="w-full p-2 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-400 mb-1">Pulsante 3</label>
+                    <input
+                      type="text"
+                      value={editMaybeLabel}
+                      onChange={(e) => setEditMaybeLabel(e.target.value)}
+                      className="w-full p-2 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Actions */}
+              <div className="pt-4 flex items-center justify-end gap-3 border-t border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setEditingPoll(null)}
+                  className="px-4 py-2.5 text-xs font-semibold text-slate-400 hover:text-white cursor-pointer"
+                >
+                  Annulla
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl shadow-md shadow-blue-600/30 flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Check className="w-4 h-4" />
+                  <span>Salva Modifiche</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* Create New Poll Modal */}
       {isCreateModalOpen && (
         <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 max-w-xl w-full relative shadow-2xl my-8 animate-in zoom-in-95 duration-200">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 max-w-xl w-full relative shadow-2xl my-8 animate-in zoom-in-95 duration-150">
             <button
               onClick={() => setIsCreateModalOpen(false)}
               className="absolute top-5 right-5 p-2 text-slate-400 hover:text-white rounded-xl bg-slate-800 hover:bg-slate-700 cursor-pointer"
@@ -509,21 +733,21 @@ export default function AdminPage() {
               <X className="w-5 h-5" />
             </button>
 
-            <h3 className="text-xl font-black text-white mb-2">Crea Nuovo Sondaggio Live</h3>
+            <h3 className="text-xl font-black text-white mb-1">Crea Nuovo Sondaggio</h3>
             <p className="text-xs text-slate-400 mb-6">
-              Scegli la tipologia di interazione da mostrare agli studenti durante la presentazione
+              Scegli la tipologia di interazione e scrivi il testo
             </p>
 
-            <form onSubmit={handleCreatePoll} className="space-y-5">
-              {/* Poll Type Selector */}
+            <form onSubmit={handleCreatePoll} className="space-y-4">
+              {/* Type selector */}
               <div>
-                <label className="block text-xs font-bold text-slate-300 mb-2">Tipologia di Interazione</label>
+                <label className="block text-xs font-bold text-slate-300 mb-2">Tipologia</label>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                   {[
+                    { id: 'choice', label: 'Scelta Multipla', icon: '📊' },
                     { id: 'rating', label: '1-10 Accordo', icon: '⭐' },
                     { id: 'text', label: 'Testo Libero', icon: '💬' },
-                    { id: 'choice', label: 'Scelta Multipla', icon: '📊' },
-                    { id: 'qna', label: 'Q&A con Voti', icon: '❓' },
+                    { id: 'qna', label: 'Q&A Platea', icon: '❓' },
                     { id: 'emoji', label: 'Emoji Pulse', icon: '🔥' },
                     { id: 'yesno', label: 'Sì / No', icon: '👍' },
                   ].map((item) => (
@@ -544,22 +768,22 @@ export default function AdminPage() {
                 </div>
               </div>
 
-              {/* Title / Question */}
+              {/* Title */}
               <div>
                 <label className="block text-xs font-bold text-slate-300 mb-1.5">
-                  Domanda o Titolo del Sondaggio *
+                  Domanda del Sondaggio *
                 </label>
                 <input
                   type="text"
                   required
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
-                  placeholder="Es: Quanto sei d'accordo con questa conclusione?"
-                  className="w-full p-3 bg-slate-950 border border-slate-700 rounded-xl text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Es: Qual è il principale ostacolo in questo processo?"
+                  className="w-full p-3 bg-slate-950 border border-slate-700 rounded-xl text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
 
-              {/* Subtitle / Description */}
+              {/* Description */}
               <div>
                 <label className="block text-xs font-bold text-slate-300 mb-1.5">
                   Descrizione o Istruzioni (opzionale)
@@ -568,36 +792,12 @@ export default function AdminPage() {
                   type="text"
                   value={newDescription}
                   onChange={(e) => setNewDescription(e.target.value)}
-                  placeholder="Es: Vota pensando all'ultimo case study analizzato"
-                  className="w-full p-3 bg-slate-950 border border-slate-700 rounded-xl text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Es: Vota pensando al tuo team di lavoro"
+                  className="w-full p-3 bg-slate-950 border border-slate-700 rounded-xl text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
 
-              {/* Rating Type Customization */}
-              {newType === 'rating' && (
-                <div className="grid grid-cols-2 gap-3 pt-2">
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-400 mb-1">Etichetta Voto 1</label>
-                    <input
-                      type="text"
-                      value={newMinLabel}
-                      onChange={(e) => setNewMinLabel(e.target.value)}
-                      className="w-full p-2.5 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-400 mb-1">Etichetta Voto 10</label>
-                    <input
-                      type="text"
-                      value={newMaxLabel}
-                      onChange={(e) => setNewMaxLabel(e.target.value)}
-                      className="w-full p-2.5 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white"
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* Multiple Choice Customization */}
+              {/* Type specific inputs */}
               {newType === 'choice' && (
                 <div className="space-y-2 pt-2">
                   <label className="block text-xs font-bold text-slate-300">Opzioni di Risposta</label>
@@ -627,7 +827,7 @@ export default function AdminPage() {
                       )}
                     </div>
                   ))}
-                  {newOptions.length < 6 && (
+                  {newOptions.length < 8 && (
                     <button
                       type="button"
                       onClick={() => setNewOptions([...newOptions, `Opzione ${newOptions.length + 1}`])}
@@ -640,7 +840,30 @@ export default function AdminPage() {
                 </div>
               )}
 
-              {/* Submit / Cancel Buttons */}
+              {newType === 'rating' && (
+                <div className="grid grid-cols-2 gap-3 pt-2">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-400 mb-1">Etichetta Voto 1</label>
+                    <input
+                      type="text"
+                      value={newMinLabel}
+                      onChange={(e) => setNewMinLabel(e.target.value)}
+                      className="w-full p-2.5 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-400 mb-1">Etichetta Voto 10</label>
+                    <input
+                      type="text"
+                      value={newMaxLabel}
+                      onChange={(e) => setNewMaxLabel(e.target.value)}
+                      className="w-full p-2.5 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Actions */}
               <div className="pt-4 flex items-center justify-end gap-3 border-t border-slate-800">
                 <button
                   type="button"
