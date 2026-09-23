@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { RatingPoll } from '@/types/poll';
-import { CheckCircle2, Send } from 'lucide-react';
+import { CheckCircle2, ArrowRight } from 'lucide-react';
 
 interface RatingVoteProps {
   poll: RatingPoll;
@@ -17,7 +17,7 @@ export const RatingVote: React.FC<RatingVoteProps> = ({ poll, onSubmit, disabled
 
   const range = Array.from({ length: poll.max - poll.min + 1 }, (_, i) => poll.min + i);
 
-  const handleSelect = async (val: number) => {
+  const handleSelect = (val: number) => {
     if (disabled || loading) return;
     setSelected(val);
   };
@@ -34,20 +34,20 @@ export const RatingVote: React.FC<RatingVoteProps> = ({ poll, onSubmit, disabled
 
   if (submitted) {
     return (
-      <div className="text-center py-10 px-4 bg-emerald-500/10 border border-emerald-500/20 rounded-3xl animate-in fade-in zoom-in-95 duration-300">
-        <CheckCircle2 className="w-16 h-16 text-emerald-500 mx-auto mb-4 animate-bounce" />
-        <h3 className="text-xl font-bold text-emerald-400">Voto Registrato!</h3>
-        <p className="text-sm text-slate-300 mt-2">
-          Hai votato <strong className="text-white text-lg font-bold">{selected}</strong> su 10.
+      <div className="text-center py-10 px-6 bg-emerald-500/10 border border-emerald-500/30 rounded-3xl animate-in fade-in duration-300">
+        <CheckCircle2 className="w-16 h-16 text-emerald-400 mx-auto mb-3" />
+        <h3 className="text-2xl font-black text-white">Voto Inviato!</h3>
+        <p className="text-base text-slate-300 mt-2">
+          Hai votato <strong className="text-emerald-400 text-xl font-black">{selected}</strong> su 10.
         </p>
-        <p className="text-xs text-slate-400 mt-4">
-          Guarda lo schermo del proiettore per vedere i risultati aggiornarsi in diretta!
+        <p className="text-xs text-slate-400 mt-3">
+          Guarda lo schermo del proiettore per vedere la media aggiornarsi!
         </p>
         <button
           onClick={() => setSubmitted(false)}
           className="mt-6 text-xs text-slate-400 hover:text-white underline cursor-pointer"
         >
-          Modifica il tuo voto
+          Vuoi cambiare voto?
         </button>
       </div>
     );
@@ -55,27 +55,29 @@ export const RatingVote: React.FC<RatingVoteProps> = ({ poll, onSubmit, disabled
 
   return (
     <div className="flex flex-col items-center w-full max-w-md mx-auto">
-      {/* Min & Max Labels */}
-      <div className="w-full flex justify-between text-xs text-slate-400 mb-3 px-1">
-        <span>{poll.minLabel || 'Per nulla'}</span>
-        <span>{poll.maxLabel || 'Completamente'}</span>
+      {/* Question prompt guidance */}
+      <div className="w-full text-center mb-4">
+        <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">
+          Tocca un numero da 1 a 10:
+        </span>
       </div>
 
       {/* 1-10 Buttons Grid */}
-      <div className="grid grid-cols-5 gap-2.5 w-full mb-6">
+      <div className="grid grid-cols-5 gap-3 w-full mb-6">
         {range.map((num) => {
           const isSelected = selected === num;
+
           return (
             <button
               key={num}
               type="button"
               disabled={disabled || loading}
               onClick={() => handleSelect(num)}
-              className={`h-14 sm:h-16 text-xl sm:text-2xl font-black rounded-2xl transition-all duration-200 cursor-pointer flex items-center justify-center border ${
+              className={`h-16 text-2xl font-black rounded-2xl transition-all duration-150 cursor-pointer flex items-center justify-center border-2 ${
                 isSelected
-                  ? 'bg-gradient-to-tr from-blue-600 to-indigo-500 text-white border-blue-400 scale-105 shadow-lg shadow-blue-500/30 ring-4 ring-blue-500/20'
-                  : 'bg-slate-800/80 hover:bg-slate-700/80 text-slate-200 border-slate-700/70 hover:border-slate-600 active:scale-95'
-              } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  ? 'bg-blue-600 text-white border-blue-400 scale-105 shadow-xl shadow-blue-600/40 ring-4 ring-blue-500/30'
+                  : 'bg-slate-850 hover:bg-slate-800 text-white border-slate-700/80 active:scale-95'
+              } ${disabled ? 'opacity-40 cursor-not-allowed' : ''}`}
             >
               {num}
             </button>
@@ -83,19 +85,31 @@ export const RatingVote: React.FC<RatingVoteProps> = ({ poll, onSubmit, disabled
         })}
       </div>
 
-      {/* Confirm Button */}
+      {/* Clear scale legend */}
+      <div className="w-full flex justify-between text-xs font-bold text-slate-400 px-1 mb-6">
+        <span>1 = {poll.minLabel || 'Per nulla'}</span>
+        <span>10 = {poll.maxLabel || 'Completamente'}</span>
+      </div>
+
+      {/* Big Action Confirm Button */}
       <button
         type="button"
         disabled={selected === null || disabled || loading}
         onClick={handleConfirm}
-        className={`w-full py-4 px-6 rounded-2xl font-bold text-base flex items-center justify-center gap-2 transition-all shadow-lg cursor-pointer ${
+        className={`w-full py-4 px-6 rounded-2xl font-black text-lg flex items-center justify-center gap-2 transition-all shadow-xl cursor-pointer ${
           selected !== null && !disabled && !loading
-            ? 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shadow-blue-600/30 hover:shadow-blue-600/50 active:scale-[0.98]'
-            : 'bg-slate-800 text-slate-500 border border-slate-700/50 cursor-not-allowed'
+            ? 'bg-blue-600 hover:bg-blue-500 text-white shadow-blue-600/30 active:scale-98'
+            : 'bg-slate-800 text-slate-500 border border-slate-700/60 cursor-not-allowed'
         }`}
       >
-        <Send className="w-5 h-5" />
-        <span>{loading ? 'Invio in corso...' : selected ? `Invia Voto (${selected}/10)` : 'Seleziona un valore'}</span>
+        <span>
+          {loading
+            ? 'Invio in corso...'
+            : selected !== null
+            ? `Conferma Voto: ${selected} / 10`
+            : 'Seleziona un numero'}
+        </span>
+        {selected !== null && !loading && <ArrowRight className="w-5 h-5" />}
       </button>
     </div>
   );

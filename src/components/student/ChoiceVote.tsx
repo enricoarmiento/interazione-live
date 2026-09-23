@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { ChoicePoll } from '@/types/poll';
-import { CheckCircle2, Send } from 'lucide-react';
+import { CheckCircle2, ArrowRight } from 'lucide-react';
 
 interface ChoiceVoteProps {
   poll: ChoicePoll;
@@ -11,14 +11,6 @@ interface ChoiceVoteProps {
 }
 
 const OPTION_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
-const OPTION_COLORS = [
-  'from-blue-600/20 to-blue-500/10 border-blue-500/40 text-blue-300 hover:border-blue-400',
-  'from-emerald-600/20 to-emerald-500/10 border-emerald-500/40 text-emerald-300 hover:border-emerald-400',
-  'from-amber-600/20 to-amber-500/10 border-amber-500/40 text-amber-300 hover:border-amber-400',
-  'from-purple-600/20 to-purple-500/10 border-purple-500/40 text-purple-300 hover:border-purple-400',
-  'from-pink-600/20 to-pink-500/10 border-pink-500/40 text-pink-300 hover:border-pink-400',
-  'from-cyan-600/20 to-cyan-500/10 border-cyan-500/40 text-cyan-300 hover:border-cyan-400',
-];
 
 export const ChoiceVote: React.FC<ChoiceVoteProps> = ({ poll, onSubmit, disabled }) => {
   const [selected, setSelected] = useState<number | null>(null);
@@ -43,23 +35,23 @@ export const ChoiceVote: React.FC<ChoiceVoteProps> = ({ poll, onSubmit, disabled
   if (submitted) {
     const chosenText = selected !== null ? poll.options[selected] : '';
     return (
-      <div className="text-center py-10 px-4 bg-emerald-500/10 border border-emerald-500/20 rounded-3xl animate-in fade-in zoom-in-95 duration-300">
-        <CheckCircle2 className="w-16 h-16 text-emerald-500 mx-auto mb-4 animate-bounce" />
-        <h3 className="text-xl font-bold text-emerald-400">Scelta Registrata!</h3>
+      <div className="text-center py-10 px-6 bg-emerald-500/10 border border-emerald-500/30 rounded-3xl animate-in fade-in duration-300">
+        <CheckCircle2 className="w-16 h-16 text-emerald-400 mx-auto mb-3" />
+        <h3 className="text-2xl font-black text-white">Scelta Registrata!</h3>
         <p className="text-sm text-slate-300 mt-2">
-          Hai votato l&apos;opzione <strong className="text-white">{selected !== null ? OPTION_LETTERS[selected] : ''}</strong>:
+          Hai votato l&apos;opzione <strong className="text-emerald-400 font-bold">{selected !== null ? OPTION_LETTERS[selected] : ''}</strong>:
         </p>
-        <p className="text-sm text-white font-medium bg-slate-800/80 p-3 rounded-xl border border-slate-700/60 max-w-sm mx-auto mt-2">
+        <div className="text-base text-white font-bold bg-slate-800 p-4 rounded-2xl border border-slate-700 max-w-sm mx-auto mt-3">
           {chosenText}
-        </p>
+        </div>
         <p className="text-xs text-slate-400 mt-4">
-          Guarda lo schermo del proiettore per vedere le percentuali live!
+          Guarda lo schermo del proiettore per vedere le percentuali in diretta!
         </p>
         <button
           onClick={() => setSubmitted(false)}
           className="mt-6 text-xs text-slate-400 hover:text-white underline cursor-pointer"
         >
-          Modifica opzione
+          Vuoi cambiare risposta?
         </button>
       </div>
     );
@@ -67,10 +59,15 @@ export const ChoiceVote: React.FC<ChoiceVoteProps> = ({ poll, onSubmit, disabled
 
   return (
     <div className="flex flex-col w-full max-w-md mx-auto space-y-3">
+      <div className="w-full text-center mb-1">
+        <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">
+          Tocca l&apos;opzione che preferisci:
+        </span>
+      </div>
+
       {poll.options.map((option, idx) => {
         const isSelected = selected === idx;
         const letter = OPTION_LETTERS[idx] || String(idx + 1);
-        const colorClass = OPTION_COLORS[idx % OPTION_COLORS.length];
 
         return (
           <button
@@ -78,22 +75,22 @@ export const ChoiceVote: React.FC<ChoiceVoteProps> = ({ poll, onSubmit, disabled
             type="button"
             disabled={disabled || loading}
             onClick={() => handleSelect(idx)}
-            className={`w-full p-4 rounded-2xl border text-left transition-all duration-200 cursor-pointer flex items-center gap-3.5 relative overflow-hidden ${
+            className={`w-full p-4 rounded-2xl border-2 text-left transition-all duration-150 cursor-pointer flex items-center gap-4 ${
               isSelected
-                ? 'bg-blue-600 text-white border-blue-400 shadow-lg shadow-blue-600/30 scale-[1.01] ring-2 ring-blue-400/50'
-                : `bg-gradient-to-r ${colorClass} bg-slate-850 hover:bg-slate-800 text-slate-200 active:scale-[0.99]`
-            } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                ? 'bg-blue-600 text-white border-blue-400 shadow-xl shadow-blue-600/30 ring-4 ring-blue-500/20 scale-[1.01]'
+                : 'bg-slate-850 hover:bg-slate-800 text-slate-100 border-slate-700/80 active:scale-98'
+            } ${disabled ? 'opacity-40 cursor-not-allowed' : ''}`}
           >
             <div
-              className={`w-9 h-9 rounded-xl flex items-center justify-center font-black text-sm shrink-0 shadow-sm ${
+              className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-base shrink-0 ${
                 isSelected
-                  ? 'bg-white text-blue-600'
-                  : 'bg-slate-800 text-white border border-slate-700'
+                  ? 'bg-white text-blue-600 shadow-sm'
+                  : 'bg-slate-800 text-slate-300 border border-slate-700'
               }`}
             >
               {letter}
             </div>
-            <span className="text-sm sm:text-base font-medium leading-snug flex-1">
+            <span className="text-base font-bold leading-snug flex-1">
               {option}
             </span>
           </button>
@@ -104,14 +101,20 @@ export const ChoiceVote: React.FC<ChoiceVoteProps> = ({ poll, onSubmit, disabled
         type="button"
         disabled={selected === null || disabled || loading}
         onClick={handleConfirm}
-        className={`mt-4 w-full py-4 px-6 rounded-2xl font-bold text-base flex items-center justify-center gap-2 transition-all shadow-lg cursor-pointer ${
+        className={`mt-4 w-full py-4 px-6 rounded-2xl font-black text-lg flex items-center justify-center gap-2 transition-all shadow-xl cursor-pointer ${
           selected !== null && !disabled && !loading
-            ? 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shadow-blue-600/30 hover:shadow-blue-600/50 active:scale-[0.98]'
-            : 'bg-slate-800 text-slate-500 border border-slate-700/50 cursor-not-allowed'
+            ? 'bg-blue-600 hover:bg-blue-500 text-white shadow-blue-600/30 active:scale-98'
+            : 'bg-slate-800 text-slate-500 border border-slate-700/60 cursor-not-allowed'
         }`}
       >
-        <Send className="w-5 h-5" />
-        <span>{loading ? 'Invio in corso...' : selected !== null ? `Conferma Scelta (${OPTION_LETTERS[selected]})` : 'Seleziona un\'opzione'}</span>
+        <span>
+          {loading
+            ? 'Invio in corso...'
+            : selected !== null
+            ? `Conferma Scelta: ${OPTION_LETTERS[selected]}`
+            : 'Seleziona un\'opzione'}
+        </span>
+        {selected !== null && !loading && <ArrowRight className="w-5 h-5" />}
       </button>
     </div>
   );

@@ -4,13 +4,13 @@ import React, { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Poll, PollResults } from '@/types/poll';
-import { QRCodeCard } from '@/components/QRCodeCard';
 import { RatingVisualizer } from './RatingVisualizer';
 import { TextVisualizer } from './TextVisualizer';
 import { ChoiceVisualizer } from './ChoiceVisualizer';
 import { QnAVisualizer } from './QnAVisualizer';
 import { EmojiVisualizer } from './EmojiVisualizer';
 import { YesNoVisualizer } from './YesNoVisualizer';
+import { QRCodeSVG } from 'qrcode.react';
 import { triggerConfetti } from '@/lib/confetti';
 import {
   Maximize,
@@ -23,11 +23,9 @@ import {
   Sparkles,
   ChevronLeft,
   ChevronRight,
-  Settings,
-  Sun,
-  Moon,
-  QrCode,
+  ArrowLeft,
   X,
+  QrCode,
 } from 'lucide-react';
 import { getStoredPolls, setActivePollId } from '@/lib/storage';
 
@@ -42,7 +40,6 @@ export const ProjectorView: React.FC<ProjectorViewProps> = ({ initialPollId }) =
   const [allPolls, setAllPolls] = useState<Poll[]>([]);
   const [currentPollId, setCurrentPollId] = useState<string>(initialPollId);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
   const [isQrExpanded, setIsQrExpanded] = useState(false);
   const [hideResults, setHideResults] = useState(false);
   const [isLocked, setIsLocked] = useState(false);
@@ -56,7 +53,6 @@ export const ProjectorView: React.FC<ProjectorViewProps> = ({ initialPollId }) =
     }
   }, []);
 
-  // Fetch poll and results
   const fetchPollData = useCallback(async (pollId: string) => {
     try {
       const res = await fetch(`/api/poll/${pollId}`);
@@ -67,7 +63,6 @@ export const ProjectorView: React.FC<ProjectorViewProps> = ({ initialPollId }) =
         setIsLocked(!!data.poll.isLocked);
         setHideResults(!!data.poll.hideResults);
       } else {
-        // If not found on server yet, check local storage and sync to server
         const local = getStoredPolls().find((p) => p.id === pollId);
         if (local) {
           setPoll(local);
@@ -89,7 +84,6 @@ export const ProjectorView: React.FC<ProjectorViewProps> = ({ initialPollId }) =
     }
   }, []);
 
-  // Sync active poll globally so students on /live automatically follow
   const syncGlobalActive = useCallback(async (pollId: string) => {
     try {
       setActivePollId(pollId);
@@ -103,7 +97,6 @@ export const ProjectorView: React.FC<ProjectorViewProps> = ({ initialPollId }) =
     }
   }, []);
 
-  // Polling loop
   useEffect(() => {
     fetchPollData(currentPollId);
     syncGlobalActive(currentPollId);
@@ -115,7 +108,6 @@ export const ProjectorView: React.FC<ProjectorViewProps> = ({ initialPollId }) =
     return () => clearInterval(interval);
   }, [currentPollId, fetchPollData, syncGlobalActive]);
 
-  // Current index in presentation sequence
   const currentIndex = allPolls.findIndex((p) => p.id === currentPollId);
 
   const goToNextPoll = useCallback(() => {
@@ -134,7 +126,6 @@ export const ProjectorView: React.FC<ProjectorViewProps> = ({ initialPollId }) =
     }
   }, [currentIndex, allPolls, router]);
 
-  // Actions
   const handleToggleLock = async () => {
     const newLocked = !isLocked;
     setIsLocked(newLocked);
@@ -156,7 +147,7 @@ export const ProjectorView: React.FC<ProjectorViewProps> = ({ initialPollId }) =
   };
 
   const handleResetVotes = async () => {
-    if (confirm('Sei sicuro di voler azzerare tutti i voti di questo sondaggio?')) {
+    if (confirm('Vuoi davvero azzerare i voti di questa domanda?')) {
       const res = await fetch(`/api/poll/${currentPollId}/reset`, { method: 'POST' });
       if (res.ok) {
         const data = await res.json();
@@ -175,7 +166,6 @@ export const ProjectorView: React.FC<ProjectorViewProps> = ({ initialPollId }) =
     }
   };
 
-  // Keyboard Shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
@@ -206,8 +196,8 @@ export const ProjectorView: React.FC<ProjectorViewProps> = ({ initialPollId }) =
   if (!poll || !results) {
     return (
       <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-white">
-        <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4" />
-        <p className="text-base font-semibold text-slate-300">Caricamento Vista Proiettore...</p>
+        <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-3" />
+        <p className="text-base font-bold text-slate-300">Caricamento Vista Proiettore...</p>
       </div>
     );
   }
@@ -215,98 +205,84 @@ export const ProjectorView: React.FC<ProjectorViewProps> = ({ initialPollId }) =
   const studentUrl = origin ? `${origin}/p/${poll.id}` : `/p/${poll.id}`;
 
   return (
-    <div
-      className={`min-h-screen flex flex-col justify-between select-none transition-colors duration-300 ${
-        theme === 'dark' ? 'bg-slate-950 text-slate-100' : 'bg-slate-100 text-slate-900'
-      }`}
-    >
-      {/* Top Bar for Presenter */}
-      <header
-        className={`px-6 py-4 flex items-center justify-between border-b backdrop-blur-md sticky top-0 z-30 ${
-          theme === 'dark'
-            ? 'bg-slate-900/80 border-slate-800'
-            : 'bg-white/80 border-slate-200 shadow-sm'
-        }`}
-      >
-        <div className="flex items-center gap-4">
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-between selection:bg-blue-600 selection:text-white">
+      {/* Clean Top Navigation Bar */}
+      <header className="px-6 py-3.5 border-b border-slate-800/80 bg-slate-900/90 backdrop-blur-md sticky top-0 z-30 flex items-center justify-between">
+        {/* Left: Exit to Admin + Slide Navigator */}
+        <div className="flex items-center gap-3">
           <Link
             href="/admin"
-            className="flex items-center gap-2 text-xs font-semibold px-3 py-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-colors"
-            title="Torna al pannello admin"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-bold transition-colors"
+            title="Torna all'elenco dei sondaggi"
           >
-            <Settings className="w-3.5 h-3.5 text-blue-400" />
-            <span>Pannello Admin</span>
+            <ArrowLeft className="w-4 h-4" />
+            <span>Esci</span>
           </Link>
 
-          {/* Navigation Prev/Next buttons */}
-          <div className="flex items-center gap-1 bg-slate-800/80 p-1 rounded-xl border border-slate-700">
+          {/* Previous / Next Poll Buttons */}
+          <div className="flex items-center gap-1.5 bg-slate-800/90 p-1 rounded-xl border border-slate-700">
             <button
               onClick={goToPrevPoll}
               disabled={currentIndex <= 0}
-              className={`p-1 rounded-lg transition-colors cursor-pointer ${
+              className={`px-2.5 py-1 rounded-lg text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer ${
                 currentIndex <= 0
                   ? 'text-slate-600 cursor-not-allowed'
-                  : 'text-slate-300 hover:text-white hover:bg-slate-700'
+                  : 'text-slate-200 hover:bg-slate-700 hover:text-white'
               }`}
-              title="Sondaggio precedente (Freccia Sinistra)"
+              title="Precedente (Freccia Sinistra)"
             >
-              <ChevronLeft className="w-5 h-5" />
+              <ChevronLeft className="w-4 h-4" />
+              <span className="hidden sm:inline">Precedente</span>
             </button>
 
-            <span className="text-xs font-mono font-bold px-2 text-slate-300">
-              {currentIndex >= 0 ? `${currentIndex + 1}/${allPolls.length}` : '—'}
+            <span className="text-xs font-black text-white px-2">
+              {currentIndex >= 0 ? `${currentIndex + 1} / ${allPolls.length}` : '—'}
             </span>
 
             <button
               onClick={goToNextPoll}
               disabled={currentIndex >= allPolls.length - 1}
-              className={`p-1 rounded-lg transition-colors cursor-pointer ${
+              className={`px-2.5 py-1 rounded-lg text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer ${
                 currentIndex >= allPolls.length - 1
                   ? 'text-slate-600 cursor-not-allowed'
-                  : 'text-slate-300 hover:text-white hover:bg-slate-700'
+                  : 'text-slate-200 hover:bg-slate-700 hover:text-white'
               }`}
-              title="Prossimo sondaggio (Freccia Destra)"
+              title="Successivo (Freccia Destra)"
             >
-              <ChevronRight className="w-5 h-5" />
+              <span className="hidden sm:inline">Successivo</span>
+              <ChevronRight className="w-4 h-4" />
             </button>
           </div>
+        </div>
 
-          {/* Live Pulse indicator */}
-          <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-semibold">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-            <span>LIVE</span>
-          </div>
-
-          {isLocked && (
-            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs font-semibold animate-pulse">
-              <Lock className="w-3 h-3" />
-              <span>VOTAZIONI CHIUSE</span>
+        {/* Center: Live Status Indicator */}
+        <div className="flex items-center gap-2">
+          {isLocked ? (
+            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/40 text-xs font-bold animate-pulse">
+              <Lock className="w-3.5 h-3.5" />
+              <span>Voti Bloccati</span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-xs font-bold">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+              <span>Votazioni Aperte</span>
             </div>
           )}
         </div>
 
-        {/* Right action controls */}
+        {/* Right: Simplified Controls */}
         <div className="flex items-center gap-2">
-          {/* Confetti button */}
-          <button
-            onClick={triggerConfetti}
-            className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-400 border border-slate-700 transition-colors cursor-pointer"
-            title="Coriandoli celebrativi (C)"
-          >
-            <Sparkles className="w-4 h-4" />
-          </button>
-
           {/* Hide/Show Results */}
           <button
             onClick={handleToggleHide}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition-colors cursor-pointer ${
               hideResults
-                ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                ? 'bg-amber-500/20 text-amber-300 border-amber-500/50'
                 : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700'
             }`}
-            title="Nascondi o mostra risultati (H)"
+            title="Nascondi i risultati per non influenzare gli studenti (tasto H)"
           >
-            {hideResults ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+            {hideResults ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
             <span className="hidden md:inline">{hideResults ? 'Risultati Nascosti' : 'Nascondi'}</span>
           </button>
 
@@ -315,38 +291,38 @@ export const ProjectorView: React.FC<ProjectorViewProps> = ({ initialPollId }) =
             onClick={handleToggleLock}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition-colors cursor-pointer ${
               isLocked
-                ? 'bg-rose-500/20 text-rose-300 border-rose-500/40'
+                ? 'bg-rose-500/20 text-rose-300 border-rose-500/50'
                 : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700'
             }`}
-            title="Blocca o sblocca risposte (L)"
+            title="Blocca o sblocca la possibilità di votare (tasto L)"
           >
-            {isLocked ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
-            <span className="hidden md:inline">{isLocked ? 'Sblocca' : 'Blocca Voti'}</span>
+            {isLocked ? <Lock className="w-4 h-4" /> : <Unlock className="w-4 h-4" />}
+            <span className="hidden md:inline">{isLocked ? 'Sblocca' : 'Blocca'}</span>
+          </button>
+
+          {/* Confetti button */}
+          <button
+            onClick={triggerConfetti}
+            className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-400 border border-slate-700 transition-colors cursor-pointer"
+            title="Lancia coriandoli (tasto C)"
+          >
+            <Sparkles className="w-4 h-4" />
           </button>
 
           {/* Reset */}
           <button
             onClick={handleResetVotes}
-            className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-rose-400 border border-slate-700 transition-colors cursor-pointer"
-            title="Azzera voti (R)"
+            className="p-2 rounded-xl bg-slate-800 hover:bg-rose-900/40 text-slate-400 hover:text-rose-300 border border-slate-700 transition-colors cursor-pointer"
+            title="Azzera voti (tasto R)"
           >
             <RotateCcw className="w-4 h-4" />
-          </button>
-
-          {/* Theme switcher */}
-          <button
-            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-            className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition-colors cursor-pointer"
-            title="Cambia tema chiaro/scuro"
-          >
-            {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4" />}
           </button>
 
           {/* Fullscreen */}
           <button
             onClick={handleToggleFullscreen}
-            className="p-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white shadow-md shadow-blue-600/30 transition-colors cursor-pointer"
-            title="A tutto schermo (F)"
+            className="p-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white shadow-md transition-colors cursor-pointer"
+            title="Schermo intero (tasto F)"
           >
             {isFullscreen ? <Minimize className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}
           </button>
@@ -354,45 +330,45 @@ export const ProjectorView: React.FC<ProjectorViewProps> = ({ initialPollId }) =
       </header>
 
       {/* Main Presentation Stage */}
-      <main className="flex-1 p-6 md:p-10 flex flex-col lg:flex-row gap-8 max-w-[1700px] w-full mx-auto">
-        {/* Left / Center: Question and Dynamic Visualizer */}
+      <main className="flex-1 p-6 md:p-10 flex flex-col lg:flex-row gap-8 max-w-[1700px] w-full mx-auto items-stretch">
+        {/* Left Side: Question Title & Visualizer */}
         <div className="flex-1 flex flex-col justify-between min-w-0">
           {/* Question Title */}
           <div className="mb-6">
-            <div className="flex items-center gap-2 mb-2">
-              <span className="text-xs font-black uppercase tracking-wider text-blue-400 bg-blue-500/10 px-3 py-1 rounded-full border border-blue-500/20">
-                {poll.type === 'rating' && 'Scala da 1 a 10'}
-                {poll.type === 'text' && 'Testo Libero & Word Cloud'}
-                {poll.type === 'choice' && 'Scelta Multipla'}
-                {poll.type === 'qna' && 'Q&A con Votazione'}
-                {poll.type === 'emoji' && 'Emoji Pulse Live'}
-                {poll.type === 'yesno' && 'Votazione Istantanea'}
-              </span>
-            </div>
-            <h1 className="text-2xl sm:text-4xl lg:text-5xl font-black tracking-tight leading-tight text-balance">
+            <span className="text-xs font-black uppercase tracking-wider text-blue-400 bg-blue-500/10 px-3 py-1 rounded-full border border-blue-500/20 inline-block mb-3">
+              {poll.type === 'rating' && '⭐ Voto da 1 a 10'}
+              {poll.type === 'text' && '💬 Testo Libero & Parole Chiave'}
+              {poll.type === 'choice' && '📊 Scelta Multipla'}
+              {poll.type === 'qna' && '❓ Domande dal Pubblico'}
+              {poll.type === 'emoji' && '🔥 Reazioni in Diretta'}
+              {poll.type === 'yesno' && '👍 Voto Istantaneo'}
+            </span>
+
+            <h1 className="text-3xl sm:text-5xl font-black tracking-tight leading-tight text-white">
               {poll.title}
             </h1>
+
             {poll.description && (
-              <p className="mt-2 text-base sm:text-xl text-slate-400 font-medium">
+              <p className="mt-2 text-base sm:text-lg text-slate-400 font-medium">
                 {poll.description}
               </p>
             )}
           </div>
 
-          {/* Results Visualizer */}
+          {/* Visualizer Container */}
           <div className="flex-1 flex flex-col justify-center">
             {hideResults ? (
-              <div className="flex-1 min-h-[360px] flex flex-col items-center justify-center bg-slate-900/60 rounded-3xl border border-slate-800 p-8 text-center animate-pulse">
-                <EyeOff className="w-16 h-16 text-slate-500 mb-4" />
-                <h3 className="text-2xl font-bold text-white">Votazione in corso...</h3>
-                <p className="text-sm text-slate-400 mt-2 max-w-md">
-                  I risultati sono temporaneamente nascosti per non influenzare le risposte degli studenti.
+              <div className="flex-1 min-h-[360px] flex flex-col items-center justify-center bg-slate-900/60 rounded-3xl border border-slate-800 p-8 text-center">
+                <EyeOff className="w-16 h-16 text-slate-500 mb-3" />
+                <h3 className="text-2xl font-bold text-white">Risultati Nascosti</h3>
+                <p className="text-sm text-slate-400 mt-1 max-w-sm">
+                  L&apos;aula sta votando. Clicca su &quot;Svela Risultati&quot; o premi il tasto <strong className="text-white">H</strong> quando vuoi mostrare i grafici.
                 </p>
                 <button
                   onClick={handleToggleHide}
-                  className="mt-6 px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl shadow-lg cursor-pointer"
+                  className="mt-5 px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl shadow-lg cursor-pointer"
                 >
-                  Svela Risultati (H)
+                  Svela Risultati (Tasto H)
                 </button>
               </div>
             ) : (
@@ -408,40 +384,67 @@ export const ProjectorView: React.FC<ProjectorViewProps> = ({ initialPollId }) =
           </div>
         </div>
 
-        {/* Right: High-Resolution QR Code & Join Info */}
-        <div className="lg:w-[320px] shrink-0 flex flex-col items-center justify-center">
-          <div className="w-full relative">
-            <QRCodeCard
-              url={studentUrl}
-              code={poll.code}
-              size={210}
-              title="Scansiona per partecipare"
-            />
-            {/* Expand QR button */}
+        {/* Right Side: Ultra-Clean Projector QR Code Card */}
+        <div className="lg:w-[300px] shrink-0 flex flex-col items-center justify-center">
+          <div className="w-full bg-white rounded-3xl p-6 shadow-2xl text-slate-950 text-center flex flex-col items-center">
+            <h3 className="text-base font-black tracking-tight mb-3">
+              Inquadra per votare
+            </h3>
+
+            {/* QR Code */}
+            <div
+              onClick={() => setIsQrExpanded(true)}
+              className="p-2 bg-white rounded-2xl cursor-pointer hover:scale-105 transition-transform"
+              title="Clicca per ingrandire a tutto schermo"
+            >
+              <QRCodeSVG
+                value={studentUrl}
+                size={200}
+                level="H"
+                imageSettings={{
+                  src: '/favicon.ico',
+                  x: undefined,
+                  y: undefined,
+                  height: 24,
+                  width: 24,
+                  opacity: 1,
+                  excavate: true,
+                }}
+              />
+            </div>
+
+            {/* Simple Instructions */}
+            <div className="mt-4 pt-3 border-t border-slate-100 w-full">
+              <span className="text-xs text-slate-500 font-semibold block">Oppure inserisci il PIN</span>
+              <span className="text-2xl font-black font-mono tracking-widest text-blue-600 block mt-0.5">
+                {poll.code}
+              </span>
+            </div>
+
             <button
               onClick={() => setIsQrExpanded(true)}
-              className="mt-3 w-full py-2 bg-slate-800/80 hover:bg-slate-700 text-slate-300 text-xs font-bold rounded-xl border border-slate-700 flex items-center justify-center gap-2 cursor-pointer transition-colors"
+              className="mt-3 text-xs text-slate-500 hover:text-slate-800 font-semibold flex items-center justify-center gap-1 cursor-pointer"
             >
-              <QrCode className="w-4 h-4 text-blue-400" />
-              Ingrandisci QR a tutto schermo
+              <QrCode className="w-3.5 h-3.5" />
+              <span>Ingrandisci QR</span>
             </button>
           </div>
         </div>
       </main>
 
       {/* Footer Hotkey Legend */}
-      <footer className="px-6 py-3 border-t border-slate-800/80 bg-slate-900/40 text-slate-500 text-[11px] flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-4 flex-wrap">
-          <span>Scorciatoie:</span>
-          <span className="font-mono bg-slate-800 px-1.5 py-0.5 rounded text-slate-300">⬅️ ➡️ Cambia Sondaggio</span>
-          <span className="font-mono bg-slate-800 px-1.5 py-0.5 rounded text-slate-300">F Fullscreen</span>
-          <span className="font-mono bg-slate-800 px-1.5 py-0.5 rounded text-slate-300">H Nascondi Risultati</span>
-          <span className="font-mono bg-slate-800 px-1.5 py-0.5 rounded text-slate-300">L Blocca Voti</span>
-          <span className="font-mono bg-slate-800 px-1.5 py-0.5 rounded text-slate-300">C Coriandoli</span>
-          <span className="font-mono bg-slate-800 px-1.5 py-0.5 rounded text-slate-300">R Azzera Voti</span>
+      <footer className="px-6 py-2.5 border-t border-slate-800/80 bg-slate-900/60 text-slate-400 text-xs flex flex-wrap items-center justify-between gap-4">
+        <div className="flex items-center gap-3 flex-wrap">
+          <span className="font-bold text-slate-300">Scorciatoie:</span>
+          <span><kbd className="bg-slate-800 px-1.5 py-0.5 rounded text-white font-mono">⬅️</kbd> <kbd className="bg-slate-800 px-1.5 py-0.5 rounded text-white font-mono">➡️</kbd> Cambia slide</span>
+          <span><kbd className="bg-slate-800 px-1.5 py-0.5 rounded text-white font-mono">F</kbd> Schermo Intero</span>
+          <span><kbd className="bg-slate-800 px-1.5 py-0.5 rounded text-white font-mono">H</kbd> Nascondi/Mostra</span>
+          <span><kbd className="bg-slate-800 px-1.5 py-0.5 rounded text-white font-mono">L</kbd> Blocca</span>
+          <span><kbd className="bg-slate-800 px-1.5 py-0.5 rounded text-white font-mono">C</kbd> Coriandoli</span>
+          <span><kbd className="bg-slate-800 px-1.5 py-0.5 rounded text-white font-mono">R</kbd> Azzera</span>
         </div>
-        <div className="font-medium text-slate-400">
-          SlidePulse • Real-Time Audience Interaction
+        <div className="text-slate-500 font-medium">
+          SlidePulse Live
         </div>
       </footer>
 
@@ -456,22 +459,17 @@ export const ProjectorView: React.FC<ProjectorViewProps> = ({ initialPollId }) =
           </button>
 
           <div className="text-center mb-6">
-            <h2 className="text-3xl sm:text-5xl font-black text-white">Inquadra con il telefono</h2>
-            <p className="text-lg text-slate-400 mt-2">Nessuna registrazione richiesta • Partecipazione anonima</p>
+            <h2 className="text-4xl sm:text-5xl font-black text-white">Inquadra con il telefono</h2>
+            <p className="text-base text-slate-400 mt-2">Nessuna registrazione richiesta • Voto anonimo immediato</p>
           </div>
 
           <div className="p-8 bg-white rounded-3xl shadow-2xl">
-            <QRCodeCard
-              url={studentUrl}
-              code={poll.code}
-              size={360}
-              compact
-            />
+            <QRCodeSVG value={studentUrl} size={340} level="M" />
           </div>
 
           <div className="mt-6 text-center">
-            <p className="text-slate-400 text-sm">Oppure vai su <span className="font-mono text-white font-bold">{origin || 'questo sito'}</span></p>
-            <p className="text-slate-400 text-sm mt-1">e inserisci il PIN: <strong className="text-blue-400 text-2xl font-mono">{poll.code}</strong></p>
+            <p className="text-slate-400 text-sm">Codice PIN:</p>
+            <p className="text-3xl font-mono font-black text-blue-400 tracking-widest mt-1">{poll.code}</p>
           </div>
         </div>
       )}
