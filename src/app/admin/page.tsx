@@ -552,6 +552,39 @@ export default function AdminPage() {
               size={220}
               title="Scansiona con la fotocamera per votare"
             />
+
+            {/* PowerPoint Web Viewer Embed Box section */}
+            <div className="mt-5 p-4 rounded-2xl bg-slate-950 border border-slate-800 text-left">
+              <div className="flex items-center gap-2 mb-1.5">
+                <Sparkles className="w-4 h-4 text-amber-400 shrink-0" />
+                <span className="text-xs font-bold text-white">Box Risultati Live in PowerPoint</span>
+              </div>
+              <p className="text-[11px] text-slate-400 leading-relaxed mb-3">
+                Puoi inserire questo sondaggio live direttamente dentro la diapositiva usando il componente aggiuntivo gratuito di PowerPoint <strong>Web Viewer</strong>:
+              </p>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  readOnly
+                  value={`${origin || 'https://interazione-live.vercel.app'}/embed/${selectedQrPoll.id}`}
+                  className="flex-1 p-2 bg-slate-900 border border-slate-700 rounded-xl text-xs font-mono text-blue-400 select-all"
+                />
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(`${origin || 'https://interazione-live.vercel.app'}/embed/${selectedQrPoll.id}`);
+                    alert('Link per PowerPoint copiato!');
+                  }}
+                  className="px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold shrink-0 cursor-pointer"
+                >
+                  Copia Link
+                </button>
+              </div>
+              <ol className="mt-2.5 space-y-1 text-[10px] text-slate-400 list-decimal list-inside leading-normal">
+                <li>In PowerPoint clicca su <strong>Inserisci → Componenti aggiuntivi</strong></li>
+                <li>Cerca ed aggiungi <strong>Web Viewer</strong> (gratuito)</li>
+                <li>Incolla l&apos;URL copiato qui sopra nel riquadro</li>
+              </ol>
+            </div>
           </div>
         </div>
       )}
