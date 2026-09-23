@@ -27,8 +27,13 @@ import {
   X,
   QrCode,
   AppWindow,
+  Edit2,
+  PlusCircle,
+  Trash2,
+  Check,
+  Save,
 } from 'lucide-react';
-import { getStoredPolls, setActivePollId } from '@/lib/storage';
+import { getStoredPolls, saveStoredPolls, setActivePollId } from '@/lib/storage';
 
 interface ProjectorViewProps {
   initialPollId: string;
@@ -45,6 +50,18 @@ export const ProjectorView: React.FC<ProjectorViewProps> = ({ initialPollId }) =
   const [hideResults, setHideResults] = useState(false);
   const [isLocked, setIsLocked] = useState(false);
   const [origin, setOrigin] = useState('');
+
+  // Live in-projector editing state
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editTitle, setEditTitle] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+  const [editOptions, setEditOptions] = useState<string[]>([]);
+  const [editMinLabel, setEditMinLabel] = useState('');
+  const [editMaxLabel, setEditMaxLabel] = useState('');
+  const [editYesLabel, setEditYesLabel] = useState('');
+  const [editNoLabel, setEditNoLabel] = useState('');
+  const [editMaybeLabel, setEditMaybeLabel] = useState('');
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -161,6 +178,87 @@ export const ProjectorView: React.FC<ProjectorViewProps> = ({ initialPollId }) =
     }
   };
 
+  const handleOpenEditModal = () => {
+    if (!poll) return;
+    setEditTitle(poll.title);
+    setEditDescription(poll.description || '');
+
+    if (poll.type === 'choice') {
+      setEditOptions([...(poll.options || [])]);
+    } else if (poll.type === 'rating') {
+      setEditMinLabel(poll.minLabel || 'Per nulla d\'accordo');
+      setEditMaxLabel(poll.maxLabel || 'Totalmente d\'accordo');
+    } else if (poll.type === 'yesno') {
+      setEditYesLabel(poll.yesLabel || 'Sì');
+      setEditNoLabel(poll.noLabel || 'No');
+      setEditMaybeLabel(poll.maybeLabel || 'Forse');
+    }
+    setIsEditModalOpen(true);
+  };
+
+  const handleSaveEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!poll || !editTitle.trim()) return;
+    setIsSavingEdit(true);
+
+    let updatedPoll: Poll;
+    if (poll.type === 'choice') {
+      const cleanOpts = editOptions.map((o) => o.trim()).filter(Boolean);
+      if (cleanOpts.length < 2) {
+        alert('Inserisci almeno 2 opzioni');
+        setIsSavingEdit(false);
+        return;
+      }
+      updatedPoll = {
+        ...poll,
+        title: editTitle.trim(),
+        description: editDescription.trim() || undefined,
+        options: cleanOpts,
+      };
+    } else if (poll.type === 'rating') {
+      updatedPoll = {
+        ...poll,
+        title: editTitle.trim(),
+        description: editDescription.trim() || undefined,
+        minLabel: editMinLabel.trim() || 'Per nulla d\'accordo',
+        maxLabel: editMaxLabel.trim() || 'Totalmente d\'accordo',
+      };
+    } else if (poll.type === 'yesno') {
+      updatedPoll = {
+        ...poll,
+        title: editTitle.trim(),
+        description: editDescription.trim() || undefined,
+        yesLabel: editYesLabel.trim() || 'Sì',
+        noLabel: editNoLabel.trim() || 'No',
+        maybeLabel: editMaybeLabel.trim() || 'Forse',
+      };
+    } else {
+      updatedPoll = {
+        ...poll,
+        title: editTitle.trim(),
+        description: editDescription.trim() || undefined,
+      };
+    }
+
+    setPoll(updatedPoll);
+    const updatedList = allPolls.map((p) => (p.id === updatedPoll.id ? updatedPoll : p));
+    setAllPolls(updatedList);
+    saveStoredPolls(updatedList);
+
+    try {
+      await fetch(`/api/poll/${updatedPoll.id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedPoll),
+      });
+    } catch (err) {
+      console.error('Error syncing edited poll to server', err);
+    }
+
+    setIsSavingEdit(false);
+    setIsEditModalOpen(false);
+  };
+
   const handleToggleFullscreen = () => {
     if (!document.fullscreenElement) {
       document.documentElement.requestFullscreen().catch(() => {});
@@ -204,7 +302,22 @@ export const ProjectorView: React.FC<ProjectorViewProps> = ({ initialPollId }) =
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
 
-      if (e.key === 'ArrowRight' || e.key === 'PageDown') {
+      if (e.key === 'Escape') {
+        if (isEditModalOpen) {
+          setIsEditModalOpen(false);
+          return;
+        }
+        if (isQrExpanded) {
+          setIsQrExpanded(false);
+          return;
+        }
+      }
+
+      if (isEditModalOpen) return;
+
+      if (e.key === 'e' || e.key === 'E') {
+        handleOpenEditModal();
+      } else if (e.key === 'ArrowRight' || e.key === 'PageDown') {
         goToNextPoll();
       } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
         goToPrevPoll();
@@ -227,7 +340,7 @@ export const ProjectorView: React.FC<ProjectorViewProps> = ({ initialPollId }) =
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [goToNextPoll, goToPrevPoll, isLocked, hideResults, currentPollId, origin]);
+  }, [goToNextPoll, goToPrevPoll, isLocked, hideResults, currentPollId, origin, isEditModalOpen, isQrExpanded, poll]);
 
   if (!poll || !results) {
     return (
@@ -356,6 +469,16 @@ export const ProjectorView: React.FC<ProjectorViewProps> = ({ initialPollId }) =
             <RotateCcw className="w-4 h-4" />
           </button>
 
+          {/* Live Edit Button */}
+          <button
+            onClick={handleOpenEditModal}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-300 hover:text-white border border-amber-500/30 text-xs font-bold transition-colors cursor-pointer"
+            title="Modifica domanda o opzioni in diretta (tasto E)"
+          >
+            <Edit2 className="w-4 h-4 text-amber-400" />
+            <span className="hidden md:inline">Modifica Testo</span>
+          </button>
+
           {/* Finestra Flottante (Always-on-top Picture-in-Picture) */}
           <button
             onClick={handleOpenPip}
@@ -381,23 +504,34 @@ export const ProjectorView: React.FC<ProjectorViewProps> = ({ initialPollId }) =
       <main className="flex-1 p-6 md:p-10 flex flex-col lg:flex-row gap-8 max-w-[1700px] w-full mx-auto items-stretch">
         {/* Left Side: Question Title & Visualizer */}
         <div className="flex-1 flex flex-col justify-between min-w-0">
-          {/* Question Title */}
-          <div className="mb-6">
-            <span className="text-xs font-black uppercase tracking-wider text-blue-400 bg-blue-500/10 px-3 py-1 rounded-full border border-blue-500/20 inline-block mb-3">
-              {poll.type === 'rating' && '⭐ Voto da 1 a 10'}
-              {poll.type === 'text' && '💬 Testo Libero & Parole Chiave'}
-              {poll.type === 'choice' && '📊 Scelta Multipla'}
-              {poll.type === 'qna' && '❓ Domande dal Pubblico'}
-              {poll.type === 'emoji' && '🔥 Reazioni in Diretta'}
-              {poll.type === 'yesno' && '👍 Voto Istantaneo'}
-            </span>
+          {/* Question Title - Clickable for Instant Live Edit */}
+          <div
+            onClick={handleOpenEditModal}
+            className="mb-6 group cursor-pointer p-3 -ml-3 rounded-2xl hover:bg-slate-900/80 transition-all border border-transparent hover:border-slate-800 relative"
+            title="Clicca per modificare la domanda o le opzioni in tempo reale (tasto E)"
+          >
+            <div className="flex items-center justify-between gap-3 mb-3">
+              <span className="text-xs font-black uppercase tracking-wider text-blue-400 bg-blue-500/10 px-3 py-1 rounded-full border border-blue-500/20 inline-block">
+                {poll.type === 'rating' && '⭐ Voto da 1 a 10'}
+                {poll.type === 'text' && '💬 Testo Libero & Parole Chiave'}
+                {poll.type === 'choice' && '📊 Scelta Multipla'}
+                {poll.type === 'qna' && '❓ Domande dal Pubblico'}
+                {poll.type === 'emoji' && '🔥 Reazioni in Diretta'}
+                {poll.type === 'yesno' && '👍 Voto Istantaneo'}
+              </span>
 
-            <h1 className="text-3xl sm:text-5xl font-black tracking-tight leading-tight text-white">
+              <span className="text-[11px] font-bold text-amber-400/90 group-hover:text-amber-300 bg-amber-500/10 px-2.5 py-1 rounded-xl border border-amber-500/20 flex items-center gap-1.5 opacity-60 group-hover:opacity-100 transition-all">
+                <Edit2 className="w-3.5 h-3.5" />
+                <span>Modifica in Diretta</span>
+              </span>
+            </div>
+
+            <h1 className="text-3xl sm:text-5xl font-black tracking-tight leading-tight text-white group-hover:text-blue-200 transition-colors">
               {poll.title}
             </h1>
 
             {poll.description && (
-              <p className="mt-2 text-base sm:text-lg text-slate-400 font-medium">
+              <p className="mt-2 text-base sm:text-lg text-slate-400 font-medium group-hover:text-slate-300 transition-colors">
                 {poll.description}
               </p>
             )}
@@ -487,6 +621,7 @@ export const ProjectorView: React.FC<ProjectorViewProps> = ({ initialPollId }) =
           <span><kbd className="bg-slate-800 px-1.5 py-0.5 rounded text-white font-mono">⬅️</kbd> <kbd className="bg-slate-800 px-1.5 py-0.5 rounded text-white font-mono">➡️</kbd> Cambia slide</span>
           <span><kbd className="bg-slate-800 px-1.5 py-0.5 rounded text-white font-mono">F</kbd> Schermo Intero</span>
           <span><kbd className="bg-slate-800 px-1.5 py-0.5 rounded text-white font-mono">P</kbd> Finestra Flottante</span>
+          <span><kbd className="bg-slate-800 px-1.5 py-0.5 rounded text-white font-mono">E</kbd> Modifica Testo</span>
           <span><kbd className="bg-slate-800 px-1.5 py-0.5 rounded text-white font-mono">H</kbd> Nascondi/Mostra</span>
           <span><kbd className="bg-slate-800 px-1.5 py-0.5 rounded text-white font-mono">L</kbd> Blocca</span>
           <span><kbd className="bg-slate-800 px-1.5 py-0.5 rounded text-white font-mono">C</kbd> Coriandoli</span>
@@ -519,6 +654,188 @@ export const ProjectorView: React.FC<ProjectorViewProps> = ({ initialPollId }) =
           <div className="mt-6 text-center">
             <p className="text-slate-400 text-sm">Codice PIN:</p>
             <p className="text-3xl font-mono font-black text-blue-400 tracking-widest mt-1">{poll.code}</p>
+          </div>
+        </div>
+      )}
+
+      {/* Live In-Projector Edit Modal */}
+      {isEditModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 max-w-xl w-full relative shadow-2xl my-8 animate-in zoom-in-95 duration-150 text-left">
+            <button
+              onClick={() => setIsEditModalOpen(false)}
+              className="absolute top-5 right-5 p-2 text-slate-400 hover:text-white rounded-xl bg-slate-800 hover:bg-slate-700 cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="flex items-center gap-3 mb-2">
+              <div className="w-10 h-10 rounded-2xl bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0">
+                <Edit2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-xl font-black text-white">Modifica Sondaggio in Diretta</h3>
+                <span className="text-[11px] text-emerald-400 font-bold flex items-center gap-1.5 mt-0.5">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping inline-block" />
+                  Proiettato ora • I voti già ricevuti restano salvati
+                </span>
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-400 mb-6 leading-relaxed">
+              Puoi modificare la domanda e le opzioni in qualsiasi momento. Lo schermo e i telefoni degli studenti si aggiorneranno automaticamente.
+            </p>
+
+            <form onSubmit={handleSaveEdit} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-300 mb-1.5">
+                  Titolo della Domanda *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                  className="w-full p-3 bg-slate-950 border border-slate-700 rounded-xl text-sm font-semibold text-white focus:border-blue-500 outline-none"
+                  placeholder="Scrivi la domanda..."
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-300 mb-1.5">
+                  Sottotitolo / Descrizione (opzionale)
+                </label>
+                <textarea
+                  rows={2}
+                  value={editDescription}
+                  onChange={(e) => setEditDescription(e.target.value)}
+                  className="w-full p-3 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white focus:border-blue-500 outline-none resize-none"
+                  placeholder="Istruzioni o dettagli aggiuntivi..."
+                />
+              </div>
+
+              {/* Dynamic options based on poll type */}
+              {poll.type === 'choice' && (
+                <div>
+                  <label className="block text-xs font-bold text-slate-300 mb-2">
+                    Opzioni di Risposta:
+                  </label>
+                  <div className="space-y-2">
+                    {editOptions.map((opt, idx) => (
+                      <div key={idx} className="flex items-center gap-2">
+                        <span className="w-7 h-7 rounded-lg bg-blue-600/20 text-blue-400 border border-blue-500/30 flex items-center justify-center font-bold text-xs shrink-0">
+                          {String.fromCharCode(65 + idx)}
+                        </span>
+                        <input
+                          type="text"
+                          value={opt}
+                          onChange={(e) => {
+                            const updated = [...editOptions];
+                            updated[idx] = e.target.value;
+                            setEditOptions(updated);
+                          }}
+                          className="flex-1 p-2.5 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white focus:border-blue-500 outline-none"
+                        />
+                        {editOptions.length > 2 && (
+                          <button
+                            type="button"
+                            onClick={() => setEditOptions(editOptions.filter((_, i) => i !== idx))}
+                            className="p-2 text-slate-500 hover:text-rose-400 rounded-xl bg-slate-800/80 cursor-pointer"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  {editOptions.length < 8 && (
+                    <button
+                      type="button"
+                      onClick={() => setEditOptions([...editOptions, `Nuova Opzione ${editOptions.length + 1}`])}
+                      className="mt-2.5 inline-flex items-center gap-1.5 text-xs text-blue-400 hover:text-blue-300 font-semibold cursor-pointer"
+                    >
+                      <PlusCircle className="w-4 h-4" />
+                      <span>Aggiungi opzione</span>
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {poll.type === 'rating' && (
+                <div className="grid grid-cols-2 gap-3 pt-1">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-300 mb-1">Etichetta Voto 1</label>
+                    <input
+                      type="text"
+                      value={editMinLabel}
+                      onChange={(e) => setEditMinLabel(e.target.value)}
+                      className="w-full p-2.5 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white"
+                      placeholder="Per nulla d'accordo"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-300 mb-1">Etichetta Voto 10</label>
+                    <input
+                      type="text"
+                      value={editMaxLabel}
+                      onChange={(e) => setEditMaxLabel(e.target.value)}
+                      className="w-full p-2.5 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white"
+                      placeholder="Totalmente d'accordo"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {poll.type === 'yesno' && (
+                <div className="grid grid-cols-3 gap-2.5 pt-1">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-300 mb-1">Testo Sì</label>
+                    <input
+                      type="text"
+                      value={editYesLabel}
+                      onChange={(e) => setEditYesLabel(e.target.value)}
+                      className="w-full p-2.5 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-300 mb-1">Testo No</label>
+                    <input
+                      type="text"
+                      value={editNoLabel}
+                      onChange={(e) => setEditNoLabel(e.target.value)}
+                      className="w-full p-2.5 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-300 mb-1">Testo Forse</label>
+                    <input
+                      type="text"
+                      value={editMaybeLabel}
+                      onChange={(e) => setEditMaybeLabel(e.target.value)}
+                      className="w-full p-2.5 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white"
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div className="pt-4 flex items-center justify-end gap-3 border-t border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setIsEditModalOpen(false)}
+                  className="px-4 py-2.5 text-xs font-semibold text-slate-400 hover:text-white cursor-pointer"
+                >
+                  Annulla
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingEdit}
+                  className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl shadow-md shadow-blue-600/30 flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                >
+                  <Save className="w-4 h-4" />
+                  <span>{isSavingEdit ? 'Salvataggio...' : 'Salva e Aggiorna Live'}</span>
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
