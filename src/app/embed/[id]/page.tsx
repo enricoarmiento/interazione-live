@@ -33,7 +33,9 @@ export default function PowerPointEmbedPage({ params }: PageProps) {
 
   const fetchPollData = useCallback(async () => {
     try {
-      const res = await fetch(`/api/poll/${pollId}`);
+      const res = await fetch(`/api/poll/${pollId}?t=${Date.now()}`, {
+        cache: 'no-store',
+      });
       if (res.ok) {
         const data = await res.json();
         setPoll(data.poll);

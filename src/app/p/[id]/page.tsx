@@ -23,9 +23,21 @@ export default function StudentPollPage({ params }: PageProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const getVoterId = useCallback((): string => {
+    if (typeof window === 'undefined') return 'anon';
+    let id = localStorage.getItem('slidepulse_voter_id');
+    if (!id) {
+      id = 'voter_' + Math.random().toString(36).substring(2, 10) + Date.now().toString(36);
+      localStorage.setItem('slidepulse_voter_id', id);
+    }
+    return id;
+  }, []);
+
   const fetchPoll = useCallback(async () => {
     try {
-      const res = await fetch(`/api/poll/${pollId}`);
+      const res = await fetch(`/api/poll/${pollId}?t=${Date.now()}`, {
+        cache: 'no-store',
+      });
       if (!res.ok) {
         throw new Error('Sondaggio non trovato');
       }
@@ -47,13 +59,17 @@ export default function StudentPollPage({ params }: PageProps) {
     return () => clearInterval(interval);
   }, [fetchPoll]);
 
-  // Vote submit handler
+  // Vote submit handler with persistent voterId
   const handleVoteSubmit = async (payload: any): Promise<boolean> => {
     try {
+      const fullPayload = {
+        ...payload,
+        voterId: getVoterId(),
+      };
       const res = await fetch(`/api/poll/${pollId}/vote`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(fullPayload),
       });
 
       if (!res.ok) {

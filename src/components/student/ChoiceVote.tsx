@@ -17,6 +17,19 @@ export const ChoiceVote: React.FC<ChoiceVoteProps> = ({ poll, onSubmit, disabled
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem(`vote_${poll.id}`);
+      if (saved !== null) {
+        const idx = parseInt(saved, 10);
+        if (!isNaN(idx) && idx >= 0 && idx < poll.options.length) {
+          setSelected(idx);
+          setSubmitted(true);
+        }
+      }
+    }
+  }, [poll.id, poll.options.length]);
+
   const handleSelect = (idx: number) => {
     if (disabled || loading) return;
     setSelected(idx);
@@ -28,6 +41,9 @@ export const ChoiceVote: React.FC<ChoiceVoteProps> = ({ poll, onSubmit, disabled
     const success = await onSubmit(selected);
     setLoading(false);
     if (success) {
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(`vote_${poll.id}`, String(selected));
+      }
       setSubmitted(true);
     }
   };

@@ -29,6 +29,9 @@ import {
   Radio,
   ExternalLink,
   Check,
+  AppWindow,
+  HelpCircle,
+  Copy,
 } from 'lucide-react';
 
 export default function AdminPage() {
@@ -37,6 +40,7 @@ export default function AdminPage() {
   const [selectedQrPoll, setSelectedQrPoll] = useState<Poll | null>(null);
   const [editingPoll, setEditingPoll] = useState<Poll | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isGuideOpen, setIsGuideOpen] = useState(false);
   const [origin, setOrigin] = useState('');
 
   // New poll form state
@@ -134,6 +138,35 @@ export default function AdminPage() {
       }
     };
     reader.readAsText(file);
+  };
+
+  const openFloatingWindow = async (pollId: string) => {
+    const embedUrl = `${origin || window.location.origin}/embed/${pollId}`;
+    if (typeof window !== 'undefined' && 'documentPictureInPicture' in window) {
+      try {
+        const pip = await (window as any).documentPictureInPicture.requestWindow({
+          width: 580,
+          height: 700,
+        });
+        const iframe = pip.document.createElement('iframe');
+        iframe.src = embedUrl;
+        iframe.style.width = '100vw';
+        iframe.style.height = '100vh';
+        iframe.style.border = 'none';
+        pip.document.body.style.margin = '0';
+        pip.document.body.style.padding = '0';
+        pip.document.body.style.overflow = 'hidden';
+        pip.document.body.appendChild(iframe);
+        return;
+      } catch (e) {
+        console.warn('Document PiP error, falling back to popup', e);
+      }
+    }
+    window.open(
+      embedUrl,
+      `pip_${pollId}`,
+      'width=580,height=700,menubar=no,toolbar=no,location=no,status=no,resizable=yes'
+    );
   };
 
   // Open Edit Modal
@@ -349,6 +382,16 @@ export default function AdminPage() {
           </div>
 
           <div className="flex items-center gap-2.5 flex-wrap">
+            {/* PowerPoint Zero Add-in Guide Button */}
+            <button
+              onClick={() => setIsGuideOpen(true)}
+              className="px-3.5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-300 font-bold text-xs sm:text-sm border border-amber-500/30 flex items-center gap-2 transition-all cursor-pointer shadow-sm"
+              title="Come integrare i sondaggi in PowerPoint senza componenti aggiuntivi"
+            >
+              <HelpCircle className="w-4 h-4 text-amber-400" />
+              <span>Guida PowerPoint</span>
+            </button>
+
             {/* New Poll Button */}
             <button
               onClick={() => setIsCreateModalOpen(true)}
@@ -553,37 +596,71 @@ export default function AdminPage() {
               title="Scansiona con la fotocamera per votare"
             />
 
-            {/* PowerPoint Web Viewer Embed Box section */}
-            <div className="mt-5 p-4 rounded-2xl bg-slate-950 border border-slate-800 text-left">
-              <div className="flex items-center gap-2 mb-1.5">
-                <Sparkles className="w-4 h-4 text-amber-400 shrink-0" />
-                <span className="text-xs font-bold text-white">Box Risultati Live in PowerPoint</span>
-              </div>
-              <p className="text-[11px] text-slate-400 leading-relaxed mb-3">
-                Puoi inserire questo sondaggio live direttamente dentro la diapositiva usando il componente aggiuntivo gratuito di PowerPoint <strong>Web Viewer</strong>:
-              </p>
-              <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  readOnly
-                  value={`${origin || 'https://interazione-live.vercel.app'}/embed/${selectedQrPoll.id}`}
-                  className="flex-1 p-2 bg-slate-900 border border-slate-700 rounded-xl text-xs font-mono text-blue-400 select-all"
-                />
+            {/* PowerPoint Zero Add-in integration options */}
+            <div className="mt-5 p-4 rounded-2xl bg-slate-950 border border-slate-800 text-left space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <Sparkles className="w-4 h-4 text-amber-400 shrink-0" />
+                  <span className="text-xs font-bold text-white">Integrazione PowerPoint (Senza Add-in)</span>
+                </div>
                 <button
-                  onClick={() => {
-                    navigator.clipboard.writeText(`${origin || 'https://interazione-live.vercel.app'}/embed/${selectedQrPoll.id}`);
-                    alert('Link per PowerPoint copiato!');
-                  }}
-                  className="px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold shrink-0 cursor-pointer"
+                  onClick={() => setIsGuideOpen(true)}
+                  className="text-[11px] text-blue-400 hover:text-blue-300 font-bold hover:underline flex items-center gap-1 cursor-pointer"
                 >
-                  Copia Link
+                  <HelpCircle className="w-3.5 h-3.5" />
+                  <span>Guida rapida</span>
                 </button>
               </div>
-              <ol className="mt-2.5 space-y-1 text-[10px] text-slate-400 list-decimal list-inside leading-normal">
-                <li>In PowerPoint clicca su <strong>Inserisci → Componenti aggiuntivi</strong></li>
-                <li>Cerca ed aggiungi <strong>Web Viewer</strong> (gratuito)</li>
-                <li>Incolla l&apos;URL copiato qui sopra nel riquadro</li>
-              </ol>
+
+              {/* Method 1: Hyperlink on QR code */}
+              <div className="p-3 rounded-xl bg-slate-900 border border-slate-800/80">
+                <span className="text-[11px] font-bold text-emerald-400 block mb-1">
+                  1. Metodo Consigliato: Clic sul QR durante la presentazione
+                </span>
+                <p className="text-[11px] text-slate-400 leading-relaxed mb-2">
+                  In PowerPoint seleziona l&apos;immagine del QR code nella slide, premi <kbd className="bg-slate-800 text-white px-1.5 py-0.5 rounded font-mono text-[10px]">Cmd + K</kbd> e incolla questo link del proiettore:
+                </p>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    readOnly
+                    value={`${origin || 'https://interazione-live.vercel.app'}/projector/${selectedQrPoll.id}`}
+                    className="flex-1 p-2 bg-slate-950 border border-slate-700 rounded-xl text-xs font-mono text-blue-400 select-all"
+                  />
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(`${origin || 'https://interazione-live.vercel.app'}/projector/${selectedQrPoll.id}`);
+                      alert('Link Proiettore copiato! Incollalo con Cmd+K sul QR code in PowerPoint.');
+                    }}
+                    className="px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold shrink-0 cursor-pointer flex items-center gap-1"
+                  >
+                    <Copy className="w-3.5 h-3.5" />
+                    <span>Copia</span>
+                  </button>
+                </div>
+                <p className="text-[10px] text-slate-500 mt-2">
+                  💡 In presentazione, cliccando sul QR code sullo schermo si apre a tutto schermo il sondaggio live con i voti che arrivano in tempo reale; premendo <kbd className="bg-slate-800 text-slate-300 px-1 py-0.5 rounded font-mono">Cmd + Tab</kbd> torni all&apos;istante alla slide successiva!
+                </p>
+              </div>
+
+              {/* Method 2: Floating window */}
+              <div className="p-3 rounded-xl bg-slate-900 border border-slate-800/80 flex items-center justify-between gap-3">
+                <div>
+                  <span className="text-[11px] font-bold text-cyan-400 block">
+                    2. Finestra Flottante Always-on-Top
+                  </span>
+                  <span className="text-[10px] text-slate-400 block mt-0.5">
+                    Galleggia sopra PowerPoint anche a schermo intero
+                  </span>
+                </div>
+                <button
+                  onClick={() => openFloatingWindow(selectedQrPoll.id)}
+                  className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-slate-700 rounded-xl text-xs font-bold shrink-0 flex items-center gap-1.5 cursor-pointer"
+                >
+                  <AppWindow className="w-3.5 h-3.5" />
+                  <span>Apri Flottante</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -913,6 +990,91 @@ export default function AdminPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Comprehensive PowerPoint Zero-Addin Guide Modal */}
+      {isGuideOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 max-w-2xl w-full relative shadow-2xl my-8 animate-in zoom-in-95 duration-150 text-left">
+            <button
+              onClick={() => setIsGuideOpen(false)}
+              className="absolute top-5 right-5 p-2 text-slate-400 hover:text-white rounded-xl bg-slate-800 hover:bg-slate-700 cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="flex items-center gap-3 mb-2">
+              <div className="w-10 h-10 rounded-2xl bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0">
+                <HelpCircle className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-xl font-black text-white">Come presentare con PowerPoint</h3>
+                <span className="text-xs text-amber-400 font-bold">100% Funzionante senza Componenti Aggiuntivi (Add-in)</span>
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-300 leading-relaxed mt-2 mb-6">
+              Negli account universitari o aziendali di Office 365, gli amministratori IT spesso <strong>bloccano l&apos;installazione dei componenti aggiuntivi</strong> dallo store di Microsoft. Ecco le <strong>3 migliori soluzioni alternative</strong> usate dai relatori e docenti professionisti:
+            </p>
+
+            <div className="space-y-4">
+              {/* Solution 1 */}
+              <div className="p-4 rounded-2xl bg-slate-950 border border-emerald-500/30">
+                <div className="flex items-center gap-2 mb-1.5">
+                  <span className="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-xs font-black">1</span>
+                  <h4 className="text-sm font-bold text-emerald-400">Il Trucco del Clic sul QR (Consigliato, Zero Setup)</h4>
+                </div>
+                <p className="text-xs text-slate-300 leading-relaxed mb-2">
+                  È il metodo più fluido ed elegante durante una presentazione:
+                </p>
+                <ol className="text-xs text-slate-400 space-y-1.5 list-decimal list-inside ml-1">
+                  <li>Incolla l&apos;immagine del <strong>QR Code</strong> sulla tua slide PowerPoint.</li>
+                  <li>Fai clic destro sull&apos;immagine in PowerPoint &rarr; seleziona <strong>Collegamento</strong> (o premi <kbd className="bg-slate-800 text-white px-1.5 py-0.5 rounded font-mono text-[11px]">Cmd + K</kbd> su Mac).</li>
+                  <li>Incolla l&apos;URL del proiettore di quel sondaggio (es. <code className="text-blue-300">.../projector/poll-1</code>).</li>
+                  <li><strong>Durante la presentazione:</strong> mostra la slide, la platea inquadra e vota. Basta <strong>un clic con il mouse sul QR code</strong> e PowerPoint apre all&apos;istante la schermata a tutto schermo con i grafici che si muovono dal vivo!</li>
+                  <li>Per andare avanti: premi <kbd className="bg-slate-800 text-white px-1.5 py-0.5 rounded font-mono text-[11px]">Cmd + Tab</kbd> o chiudi la scheda: torni all&apos;istante sulla stessa slide!</li>
+                </ol>
+              </div>
+
+              {/* Solution 2 */}
+              <div className="p-4 rounded-2xl bg-slate-950 border border-cyan-500/30">
+                <div className="flex items-center gap-2 mb-1.5">
+                  <span className="w-6 h-6 rounded-full bg-cyan-500/20 text-cyan-400 flex items-center justify-center text-xs font-black">2</span>
+                  <h4 className="text-sm font-bold text-cyan-400">Finestra Flottante Always-on-Top (Sopra PowerPoint)</h4>
+                </div>
+                <p className="text-xs text-slate-300 leading-relaxed mb-1.5">
+                  Cliccando sul pulsante <strong>&quot;Finestra Flottante&quot;</strong> (oppure premendo il tasto <kbd className="bg-slate-800 text-white px-1.5 py-0.5 rounded font-mono text-[11px]">P</kbd> nella vista proiettore), il browser apre un widget compatto con i risultati in diretta che ha una proprietà speciale:
+                </p>
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  Rimane <strong>permanentemente visibile sopra a qualsiasi altra finestra</strong>, incluso PowerPoint a tutto schermo. Puoi trascinarlo e posizionarlo sopra la diapositiva come se fosse parte integrante della slide!
+                </p>
+              </div>
+
+              {/* Solution 3 */}
+              <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800">
+                <div className="flex items-center gap-2 mb-1.5">
+                  <span className="w-6 h-6 rounded-full bg-slate-800 text-slate-300 flex items-center justify-center text-xs font-black">3</span>
+                  <h4 className="text-sm font-bold text-white">PowerPoint in Finestra + Swipe Mac (Trackpad)</h4>
+                </div>
+                <p className="text-xs text-slate-300 leading-relaxed mb-1.5">
+                  In PowerPoint su Mac vai in <em>Presentazione &rarr; Imposta presentazione...</em> e seleziona <strong>&quot;Scorsa da un individuo (finestra)&quot;</strong> anziché schermo intero.
+                </p>
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  In questo modo PowerPoint non sequestra lo schermo esclusivo del Mac. Puoi passare dalla presentazione ai risultati live con un semplice <strong>swipe a 3 dita sul trackpad</strong> in 0,2 secondi.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-6 pt-4 border-t border-slate-800 flex justify-end">
+              <button
+                onClick={() => setIsGuideOpen(false)}
+                className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl shadow-md cursor-pointer"
+              >
+                Ho Capito, Grazie!
+              </button>
+            </div>
           </div>
         </div>
       )}

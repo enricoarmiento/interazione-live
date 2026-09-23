@@ -26,6 +26,7 @@ import {
   ArrowLeft,
   X,
   QrCode,
+  AppWindow,
 } from 'lucide-react';
 import { getStoredPolls, setActivePollId } from '@/lib/storage';
 
@@ -55,7 +56,9 @@ export const ProjectorView: React.FC<ProjectorViewProps> = ({ initialPollId }) =
 
   const fetchPollData = useCallback(async (pollId: string) => {
     try {
-      const res = await fetch(`/api/poll/${pollId}`);
+      const res = await fetch(`/api/poll/${pollId}?t=${Date.now()}`, {
+        cache: 'no-store',
+      });
       if (res.ok) {
         const data = await res.json();
         setPoll(data.poll);
@@ -71,7 +74,9 @@ export const ProjectorView: React.FC<ProjectorViewProps> = ({ initialPollId }) =
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(local),
           });
-          const retry = await fetch(`/api/poll/${pollId}`);
+          const retry = await fetch(`/api/poll/${pollId}?t=${Date.now()}`, {
+            cache: 'no-store',
+          });
           if (retry.ok) {
             const data = await retry.json();
             setPoll(data.poll);
@@ -166,6 +171,35 @@ export const ProjectorView: React.FC<ProjectorViewProps> = ({ initialPollId }) =
     }
   };
 
+  const handleOpenPip = async () => {
+    const embedUrl = `${origin || window.location.origin}/embed/${currentPollId}`;
+    if (typeof window !== 'undefined' && 'documentPictureInPicture' in window) {
+      try {
+        const pip = await (window as any).documentPictureInPicture.requestWindow({
+          width: 580,
+          height: 700,
+        });
+        const iframe = pip.document.createElement('iframe');
+        iframe.src = embedUrl;
+        iframe.style.width = '100vw';
+        iframe.style.height = '100vh';
+        iframe.style.border = 'none';
+        pip.document.body.style.margin = '0';
+        pip.document.body.style.padding = '0';
+        pip.document.body.style.overflow = 'hidden';
+        pip.document.body.appendChild(iframe);
+        return;
+      } catch (e) {
+        console.warn('Document PiP failed, fallback to popup', e);
+      }
+    }
+    window.open(
+      embedUrl,
+      `pip_${currentPollId}`,
+      'width=580,height=700,menubar=no,toolbar=no,location=no,status=no,resizable=yes'
+    );
+  };
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
@@ -176,6 +210,8 @@ export const ProjectorView: React.FC<ProjectorViewProps> = ({ initialPollId }) =
         goToPrevPoll();
       } else if (e.key === 'f' || e.key === 'F') {
         handleToggleFullscreen();
+      } else if (e.key === 'p' || e.key === 'P') {
+        handleOpenPip();
       } else if (e.key === 'h' || e.key === 'H') {
         handleToggleHide();
       } else if (e.key === 'l' || e.key === 'L') {
@@ -191,7 +227,7 @@ export const ProjectorView: React.FC<ProjectorViewProps> = ({ initialPollId }) =
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [goToNextPoll, goToPrevPoll, isLocked, hideResults]);
+  }, [goToNextPoll, goToPrevPoll, isLocked, hideResults, currentPollId, origin]);
 
   if (!poll || !results) {
     return (
@@ -320,6 +356,16 @@ export const ProjectorView: React.FC<ProjectorViewProps> = ({ initialPollId }) =
             <RotateCcw className="w-4 h-4" />
           </button>
 
+          {/* Finestra Flottante (Always-on-top Picture-in-Picture) */}
+          <button
+            onClick={handleOpenPip}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-cyan-300 hover:text-white border border-slate-700 text-xs font-bold transition-colors cursor-pointer"
+            title="Finestra Flottante Sempre in Primo Piano sopra PowerPoint (tasto P)"
+          >
+            <AppWindow className="w-4 h-4 text-cyan-400" />
+            <span className="hidden md:inline">Flottante (Sopra PPT)</span>
+          </button>
+
           {/* Fullscreen */}
           <button
             onClick={handleToggleFullscreen}
@@ -440,6 +486,7 @@ export const ProjectorView: React.FC<ProjectorViewProps> = ({ initialPollId }) =
           <span className="font-bold text-slate-300">Scorciatoie:</span>
           <span><kbd className="bg-slate-800 px-1.5 py-0.5 rounded text-white font-mono">⬅️</kbd> <kbd className="bg-slate-800 px-1.5 py-0.5 rounded text-white font-mono">➡️</kbd> Cambia slide</span>
           <span><kbd className="bg-slate-800 px-1.5 py-0.5 rounded text-white font-mono">F</kbd> Schermo Intero</span>
+          <span><kbd className="bg-slate-800 px-1.5 py-0.5 rounded text-white font-mono">P</kbd> Finestra Flottante</span>
           <span><kbd className="bg-slate-800 px-1.5 py-0.5 rounded text-white font-mono">H</kbd> Nascondi/Mostra</span>
           <span><kbd className="bg-slate-800 px-1.5 py-0.5 rounded text-white font-mono">L</kbd> Blocca</span>
           <span><kbd className="bg-slate-800 px-1.5 py-0.5 rounded text-white font-mono">C</kbd> Coriandoli</span>

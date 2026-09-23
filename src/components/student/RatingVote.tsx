@@ -15,6 +15,19 @@ export const RatingVote: React.FC<RatingVoteProps> = ({ poll, onSubmit, disabled
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem(`vote_${poll.id}`);
+      if (saved !== null) {
+        const val = parseInt(saved, 10);
+        if (!isNaN(val) && val >= poll.min && val <= poll.max) {
+          setSelected(val);
+          setSubmitted(true);
+        }
+      }
+    }
+  }, [poll.id, poll.min, poll.max]);
+
   const range = Array.from({ length: poll.max - poll.min + 1 }, (_, i) => poll.min + i);
 
   const handleSelect = (val: number) => {
@@ -28,6 +41,9 @@ export const RatingVote: React.FC<RatingVoteProps> = ({ poll, onSubmit, disabled
     const success = await onSubmit(selected);
     setLoading(false);
     if (success) {
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(`vote_${poll.id}`, String(selected));
+      }
       setSubmitted(true);
     }
   };

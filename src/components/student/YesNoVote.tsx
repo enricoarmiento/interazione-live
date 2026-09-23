@@ -14,12 +14,24 @@ export const YesNoVote: React.FC<YesNoVoteProps> = ({ poll, onSubmit, disabled }
   const [submittedChoice, setSubmittedChoice] = useState<'yes' | 'no' | 'maybe' | null>(null);
   const [loading, setLoading] = useState(false);
 
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem(`vote_${poll.id}`);
+      if (saved === 'yes' || saved === 'no' || saved === 'maybe') {
+        setSubmittedChoice(saved);
+      }
+    }
+  }, [poll.id]);
+
   const handleVote = async (choice: 'yes' | 'no' | 'maybe') => {
     if (disabled || loading) return;
     setLoading(true);
     const success = await onSubmit(choice);
     setLoading(false);
     if (success) {
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(`vote_${poll.id}`, choice);
+      }
       setSubmittedChoice(choice);
     }
   };
