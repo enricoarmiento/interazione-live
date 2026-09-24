@@ -225,7 +225,7 @@ export default function StudentPollPage({ params }: PageProps) {
 
       {/* Footer */}
       <footer className="text-center text-[11px] text-slate-400 py-3 border-t border-slate-900 w-full max-w-md mx-auto">
-        Partecipazione live senza registrazione • Powered by SlidePulse
+        SlidePulse · Partecipazione anonima
       </footer>
     </div>
   );

@@ -362,9 +362,6 @@ export default function AdminPage() {
       <header className="border-b border-slate-800 bg-slate-900/90 backdrop-blur-md sticky top-0 z-30 px-6 py-4">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-blue-600 flex items-center justify-center font-black text-white text-lg shadow-md shadow-blue-600/30">
-              SP
-            </div>
             <div>
               <div className="flex items-center gap-2">
                 <input
@@ -376,7 +373,7 @@ export default function AdminPage() {
                 />
               </div>
               <span className="text-xs text-slate-400 px-2 block">
-                Pannello Relatore • Zero Database
+                Pannello relatore
               </span>
             </div>
           </div>
@@ -385,10 +382,10 @@ export default function AdminPage() {
             {/* PowerPoint Zero Add-in Guide Button */}
             <button
               onClick={() => setIsGuideOpen(true)}
-              className="px-3.5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-300 font-bold text-xs sm:text-sm border border-amber-500/30 flex items-center gap-2 transition-all cursor-pointer shadow-sm"
+              className="px-3.5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-600 font-medium text-xs sm:text-sm border border-slate-700 flex items-center gap-2 transition-colors cursor-pointer"
               title="Come integrare i sondaggi in PowerPoint senza componenti aggiuntivi"
             >
-              <HelpCircle className="w-4 h-4 text-amber-400" />
+              <HelpCircle className="w-4 h-4" />
               <span>Guida PowerPoint</span>
             </button>
 
@@ -484,12 +481,12 @@ export default function AdminPage() {
                 <div>
                   <div className="flex items-center justify-between gap-2 mb-3">
                     <span className="text-[11px] font-black uppercase tracking-wider text-blue-400 bg-blue-500/10 px-2.5 py-1 rounded-full border border-blue-500/20">
-                      {poll.type === 'rating' && '⭐ Voto da 1 a 10'}
-                      {poll.type === 'text' && '💬 Testo Libero'}
-                      {poll.type === 'choice' && `📊 Scelta Multipla (${poll.options?.length} opzioni)`}
-                      {poll.type === 'qna' && '❓ Domande & Risposte'}
-                      {poll.type === 'emoji' && '🔥 Reazioni Live'}
-                      {poll.type === 'yesno' && '👍 Sì / No'}
+                      {poll.type === 'rating' && 'Scala da 1 a 10'}
+                      {poll.type === 'text' && 'Testo libero'}
+                      {poll.type === 'choice' && `Scelta multipla · ${poll.options?.length} opzioni`}
+                      {poll.type === 'qna' && 'Domande e risposte'}
+                      {poll.type === 'emoji' && 'Reazioni'}
+                      {poll.type === 'yesno' && 'Sì / No'}
                     </span>
 
                     <span className="text-xs font-mono font-bold text-slate-400 bg-slate-950 px-2.5 py-1 rounded-lg border border-slate-800">
@@ -570,7 +567,7 @@ export default function AdminPage() {
 
       {/* Footer */}
       <footer className="border-t border-slate-900 py-4 px-6 text-center text-xs text-slate-500">
-        SlidePulse Live • Pronto per le tue presentazioni PowerPoint
+        SlidePulse · Pannello relatore
       </footer>
 
       {/* QR Code Modal preview */}
@@ -854,12 +851,12 @@ export default function AdminPage() {
                 <label className="block text-xs font-bold text-slate-300 mb-2">Tipologia</label>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                   {[
-                    { id: 'choice', label: 'Scelta Multipla', icon: '📊' },
-                    { id: 'rating', label: '1-10 Accordo', icon: '⭐' },
-                    { id: 'text', label: 'Testo Libero', icon: '💬' },
-                    { id: 'qna', label: 'Q&A Platea', icon: '❓' },
-                    { id: 'emoji', label: 'Emoji Pulse', icon: '🔥' },
-                    { id: 'yesno', label: 'Sì / No', icon: '👍' },
+                    { id: 'choice', label: 'Scelta multipla' },
+                    { id: 'rating', label: 'Scala da 1 a 10' },
+                    { id: 'text', label: 'Testo libero' },
+                    { id: 'qna', label: 'Domande e risposte' },
+                    { id: 'emoji', label: 'Reazioni' },
+                    { id: 'yesno', label: 'Sì / No' },
                   ].map((item) => (
                     <button
                       key={item.id}
@@ -871,7 +868,6 @@ export default function AdminPage() {
                           : 'bg-slate-850 hover:bg-slate-800 border-slate-700/80 text-slate-400'
                       }`}
                     >
-                      <span className="text-lg">{item.icon}</span>
                       <span className="text-xs font-bold">{item.label}</span>
                     </button>
                   ))}
